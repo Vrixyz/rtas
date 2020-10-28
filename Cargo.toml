@@ -1,5 +1,5 @@
 [package]
-name = "bevy_game"
+name = "rtas"
 version = "0.1.0"
 authors = ["Thierry Berger <thierry.berger@ohm-games.com>"]
 edition = "2018"
@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.2.1"
+bevy_prototype_lyon = "0.1.2"

@@ -5,6 +5,8 @@ use super::super::core_game::components::*;
 pub struct SelectionPending {
     pub begin_pos: Position,
     pub end_pos: Position,
+    pub begin_pos_ui: Vec2,
+    pub end_pos_ui: Vec2,
 }
 #[derive(PartialEq, Clone)]
 pub struct SelectionValidated {
@@ -21,4 +23,10 @@ pub struct MyCursorState {
     // need to identify the main camera
     pub camera_e: Entity,
     pub world_position: Position,
+    pub ui_position: Vec2,
+}
+
+
+pub struct SelectionRectVisual {
+    pub visual: Entity,
 }
