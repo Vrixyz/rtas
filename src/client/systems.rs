@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
+use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
 
 use super::super::core_game::components::*;
-use super::super::core_game::components::Orderable::*;
+use super::super::core_game::components::orders::*;
 use super::components::*;
 
 pub fn helper_in_rect(position: &Vec3, corner_1: &Position, corner_2: &Position) -> bool {
@@ -48,6 +51,38 @@ pub fn helper_rect_in_rect(r1: (&Position, &Position), r2: (&Position, &Position
         return true;
     }
     return false;
+}
+
+pub fn create_render_resource(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let texture_goblin = asset_server.load("assets/units/goblin.png").unwrap();
+    
+    let texture_ogre = asset_server.load("assets/units/ogre.png").unwrap();
+    let mut render_sprite_visuals = HashMap::new();
+    render_sprite_visuals.insert(RenderSprite::Goblin, RenderSpriteVisual {
+        color: materials.add(Color::rgb(0.1, 0.9, 0.3).into()),
+        material: materials.add(texture_goblin.into()),
+    });
+    render_sprite_visuals.insert(RenderSprite::Ogre, RenderSpriteVisual {
+        color: materials.add(Color::rgb(1.0, 0.5, 0.0).into()),
+        material: materials.add(texture_ogre.into()),
+    });
+
+    let color_selection = materials.add(Color::rgba(1.0, 1.0, 1.0, 0.2).into());
+    let team_colors = vec![
+        materials.add(Color::rgba(0.0, 0.0, 1.0, 0.5).into()),
+        materials.add(Color::rgba(1.0, 0.0, 0.0, 0.5).into()),
+    ];
+
+    let render_sprites_resource = RenderResource {
+        render_sprite_visuals,
+        color_selection,
+        team_colors,
+    };
+    commands.insert_resource(render_sprites_resource);
 }
 
 pub fn create_camera(mut commands: Commands) {
@@ -105,6 +140,47 @@ pub fn create_ui(mut commands: Commands,
     ;
     if let Some(visual) = selection_rect_visual {
         commands.insert_resource(SelectionRectVisual{visual});
+    }
+}
+
+pub fn adapt_units_for_client(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    render: Res<RenderResource>,
+    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize, &Transform)>) {
+
+    for (entity, team, render_sprite, size, transform) in &mut query.iter() {
+        commands.spawn(primitive(
+            render.team_colors[team.id],
+            &mut meshes,
+            ShapeType::Circle(size.0),
+            TessellationMode::Stroke(&StrokeOptions::default()
+                .with_line_width(3.0)
+            ),
+            Vec3::default(),
+        ))
+        .with(Parent(entity));
+        commands.insert(entity, SpriteComponents {
+            material: render.render_sprite_visuals[render_sprite].material,
+            sprite: Sprite::new(Vec2::new(size.0 * 2.0, size.0 * 2.0)),
+            transform: transform.clone(),
+            ..Default::default()
+        });
+        commands.insert_one(entity, 
+            Selectable {is_selected: false, half_size: size.0});
+        
+        commands.spawn(primitive(
+            render.color_selection,
+            &mut meshes,
+            ShapeType::Circle(size.0 + 3.0),
+            TessellationMode::Stroke(&StrokeOptions::default()
+                .with_line_width(3.0)
+            ),
+            Vec3::default(),
+        ))
+            .with(SelectionVisual)
+            .with(Parent(entity))
+        ;
     }
 }
 
@@ -221,18 +297,64 @@ pub fn selection_visual_system(query_selectables: Query<Mutated<Selectable>>,
 pub fn move_order_system(
     cursor_state: Res<MyCursorState>,
     mouse_button: Res<Input<MouseButton>>,
-    mut query: Query<(&mut Orders, &Selectable, Option<&mut AIUnit>)>) {
+    mut query: Query<(&mut Orders, &Selectable)>) {
         if mouse_button.just_pressed(MouseButton::Right) {
-            for (mut orders, selectable, ai) in &mut query.iter() {
-                // TODO: use an order: ai passive -> move -> previous ai state.
+            for (mut orders, selectable) in &mut query.iter() {
                 if selectable.is_selected {
-                    dbg!("order!");
                     orders.replace_orders(vec![
                         Order::Ai(AIUnit::Passive),
                         Orders::order_move(Vec3::new(cursor_state.world_position.x, cursor_state.world_position.y, 0f32)),
-                        Order::Ai(AIUnit::SeekEnemy(SeekEnemy{range: 200f32})),
+                        Order::Ai(AIUnit::SeekEnemy),
                     ]);
                 }
             }
         }
+}
+pub fn health_visual_system(mut commands: Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut q_orders: Query<(Entity, &Health, Option<&HealthVisual>)>) {
+    for (entity, health, visual) in &mut q_orders.iter() {
+        let red = materials.add(Color::rgb(0.8, 0.0, 0.0).into());
+        let green = materials.add(Color::rgb(0.0, 8.0, 0.0).into());
+        const WIDTH: f32 = 20f32;
+        const HEIGHT: f32 = 5f32;
+        // TODO: know size of the sprite to place its health.
+
+        let first_point = (-WIDTH/2f32, 17.5f32);
+        let max_point = (WIDTH/2f32, 17.5f32).into();
+        let current_point = (first_point.0 + (WIDTH * health.current_hp / health.max_hp), 17.5f32).into();
+
+        let line_max = primitive(
+            red,
+            &mut meshes,
+            ShapeType::Polyline {
+                points: vec![first_point.into(), max_point],
+                closed: false,
+            },
+            TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
+            Vec3::new(0.0, 0.0, 1.0),
+        );
+        let line_current = primitive(
+            green,
+            &mut meshes,
+            ShapeType::Polyline {
+                points: vec![first_point.into(), current_point],
+                closed: false,
+            },
+            TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
+            Vec3::new(0.0, 0.0, 1.5),
+        );
+
+        if let Some(visual) = visual {
+            commands.insert(visual.max_hp_visual, line_max);
+            commands.insert(visual.current_hp_visual, line_current);
+        }
+        else  {
+            let max_hp_entity = commands.spawn(line_max).with(Parent(entity)).current_entity().unwrap();
+            let current_hp_entity = commands.spawn(line_current).with(Parent(entity)).current_entity().unwrap();
+            commands.insert_one(entity, HealthVisual{max_hp_visual: max_hp_entity, current_hp_visual: current_hp_entity});
+        }
+
+    }
 }

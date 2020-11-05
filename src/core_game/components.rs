@@ -1,37 +1,34 @@
 use bevy::{math::Vec3, prelude::Entity};
 
-// FIXME: should be in client but would need to adapt unit creation in 2 steps.
-pub struct Selectable {
-    pub is_selected: bool,
-    pub half_size: f32,
+pub struct UnitSize(pub f32);
+#[derive(PartialEq, Eq, Hash)]
+/// Useful for client to know which sprite to use
+pub enum RenderSprite {
+    Ogre,
+    Goblin,
 }
-pub struct SelectionVisual;
-
-
-#[derive(PartialEq, Clone, Debug)]
-pub struct Position { pub x: f32, pub y: f32 }
 
 pub struct OffensiveStats {
     pub power: f32,
-    // TODO: add cooldown ?
 }
 
 pub struct MeleeAbility {
     pub range: f32,
-    pub cooldown: f32,
+    pub time_to_strike: f32,
 }
 
 // TODO: use a mod to encapsulate state and structures, so the naming and and their scope is cleaner.
 pub enum MeleeAbilityState {
     Hold,
-    Attacking(MeleeAbilityStateAttacking),
+    WillAttack(MeleeAbilityStateWillAttack),
 }
 
-pub struct MeleeAbilityStateAttacking {
+pub struct MeleeAbilityStateWillAttack {
     pub start_time: f32,
+    pub target_entity: Entity,
 }
 pub struct Team {
-    pub id: u32,
+    pub id: usize,
 }
 
 pub struct Health {
@@ -39,7 +36,7 @@ pub struct Health {
     pub current_hp: f32,
 }
 #[derive(Default)]
-struct SufferDamage {
+pub struct SufferDamage {
     pub amount : Vec<f32>
 }
 
@@ -48,21 +45,23 @@ impl SufferDamage {
         self.amount.push(amount);
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct SeekEnemyRange {
+    pub range: f32,
+}
+
 #[derive(Clone, Debug)]
 pub enum AIUnit {
     Passive,
-    SeekEnemy(SeekEnemy),
+    SeekEnemy,
     Attack(Attack),
-}
-#[derive(Clone, Debug)]
-pub struct SeekEnemy {
-    pub range: f32,
 }
 #[derive(Clone, Debug)]
 pub struct Attack {
     pub target: Entity,
 }
-pub mod Orderable {
+pub mod orders {
     use bevy::{math::Vec3, prelude::*};
     use bevy_prototype_lyon::prelude::*;
     use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
@@ -72,19 +71,27 @@ pub mod Orderable {
     pub struct DebugOrderMove {
         pub graphic: Entity,
     }
+    #[derive(Clone)]
+    pub struct DebugOrderMoveGraphic {
+        entity_to_debug: Entity,
+    }
+    // Hide mover to avoid doing bad things, because only
     #[derive(Clone, Debug)]
     pub struct Mover {
         target_position: Vec3,
         pub is_target_reached: bool,
+    }
+    #[derive(Clone, Debug)]
+    pub struct Speed {
         pub speed: f32,
     }
 
     impl Mover {
-        pub fn new(position: Vec3, speed: f32) -> Self {
-            Mover { target_position: position, is_target_reached: true, speed}
+        pub fn new(position: Vec3) -> Self {
+            Mover { target_position: position, is_target_reached: true}
         }
-        pub fn new_to_target(position: Vec3, speed: f32) -> Self {
-            Mover { target_position: position, is_target_reached: false, speed}
+        pub fn new_to_target(position: Vec3) -> Self {
+            Mover { target_position: position, is_target_reached: false}
         }
         pub fn get_target_position(&self) -> &Vec3 {
             &self.target_position
@@ -110,7 +117,6 @@ pub mod Orderable {
             self.orders.push(new_order);
         }
         pub fn replace_orders(&mut self, new_orders: Vec<Order>) {
-            dbg!("new orders");
             self.orders = new_orders;
             self.override_order = None;
         }
@@ -118,8 +124,7 @@ pub mod Orderable {
             &self.orders
         }
         pub fn order_move(target: Vec3) -> Order {
-            dbg!("new orders");
-            Order::Move(Awaitable::Queued(Mover::new_to_target(target, 50f32)))
+            Order::Move(Awaitable::Queued(Mover::new_to_target(target)))
         }
     }
 
@@ -171,36 +176,37 @@ pub mod Orderable {
             
         }
     }
-    /*
-    /// Returns true if order is fully executed
-    fn execute_order(order: &mut Order, mover: &mut Mut<Mover>, ai: &mut Mut<AIUnit>) -> bool {
-        match order {
-                            // FIXME: debug with prints, I guess nothing is changing.
-            Order::Ai(new_ai) =>  {
-                **ai = new_ai.clone();
-                return true;
-            },
-            Order::Move(Awaitable::Queued(move_queued)) => {
-                **mover = move_queued.clone();
-                *order = Order::Move(Awaitable::Awaiting(move_queued.clone()));
-                return false;
-            },
-            Order::Move(Awaitable::Awaiting(move_wait)) => {
-                if mover.is_target_reached {
-                    return true;
+    pub fn order_system_debug_init(mut commands: Commands,
+        mut q_orders: Query<(Entity, &Transform, &Orders, Option<&DebugOrderMove>)>) {
+            for (entity, transform, _, debug_marker) in &mut q_orders.iter() {
+                if debug_marker.is_none() {
+                    let graphic_entity = commands.spawn((transform.clone(), DebugOrderMoveGraphic {
+                        entity_to_debug: entity,
+                    })).current_entity().unwrap();
+                    commands.insert_one(entity, DebugOrderMove{graphic: graphic_entity});
                 }
-                else {
-                    return false;
-                }
-            },
-            
-        }
-    }*/
+            }
+    }
     pub fn order_system_debug(mut commands: Commands,
         mut materials: ResMut<Assets<ColorMaterial>>,
         mut meshes: ResMut<Assets<Mesh>>,
-        mut q_orders: Query<(Entity, &Transform, Mutated<Orders>, Option<&DebugOrderMove>)>) {
-        for (entity, transform, orders, graphic) in &mut q_orders.iter() {
+        mut q_debug: Query<(Entity, &DebugOrderMoveGraphic)>,
+        q_exists: Query<(Entity, &Transform, &DebugOrderMove)>,
+        q_orders: Query<Mutated<Orders>>) {
+        
+        for (graphic_debug_entity, debug) in &mut q_debug.iter() {
+            let transform = q_exists.get::<Transform>(debug.entity_to_debug);
+            if transform.is_err() {
+                commands.despawn(graphic_debug_entity);
+                continue;
+            }
+            let orders = q_orders.get::<Orders>(debug.entity_to_debug);
+            if orders.is_err() {
+                continue;
+            }
+            let transform = transform.unwrap();
+            let orders = orders.unwrap();
+
             let red = materials.add(Color::rgb(0.8, 0.0, 0.0).into());
             let position = transform.translation();
             let first_point = (position.x(), position.y()).into();
@@ -216,8 +222,6 @@ pub mod Orderable {
                 if let Order::Move(Awaitable::Awaiting(mover)) = o {
                     waypoints.push((mover.target_position.x(), mover.target_position.y()).into());
             }});
-            //dbg!(&waypoints);
-            // TODO: create line
             let line = primitive(
                 red,
                 &mut meshes,
@@ -228,19 +232,11 @@ pub mod Orderable {
                 TessellationMode::Stroke(&StrokeOptions::default().with_line_width(2.0)),
                 Vec3::new(0.0, 0.0, 0.0),
             );
-
-            if let Some(graphic) = graphic {
-                // TODO: update line
-                commands.insert(graphic.graphic, line);
-            }
-            else  {
-                let graphic_entity = commands.spawn(line).current_entity().unwrap();
-                commands.insert_one(entity, DebugOrderMove{graphic: graphic_entity});
-
-            }
-
+            
+            commands.insert(graphic_debug_entity, line);
         }
     }
+
     pub fn order_system_debug_change(
         mut q_orders: Query<(Entity, Mutated<Orders>)>) {
         
