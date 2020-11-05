@@ -46,13 +46,7 @@ pub struct RenderSpriteVisual {
     pub material: Handle<ColorMaterial>
 }
 
-
 pub struct HealthVisual {
     pub max_hp_visual: Entity,
     pub current_hp_visual: Entity,
-}
-
-
-pub struct SelectionRectVisual {
-    pub visual: Entity,
 }

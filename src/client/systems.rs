@@ -3,55 +3,10 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
 
-use super::super::core_game::components::*;
-use super::super::core_game::components::orders::*;
+use super::{selection::selection_comp::SelectionRectVisual, super::core_game::components::*};
+use super::super::core_game::orders::*;
 use super::components::*;
-
-pub fn helper_in_rect(position: &Vec3, corner_1: &Position, corner_2: &Position) -> bool {
-    let min_x = f32::min(corner_1.x, corner_2.x);
-    let max_x = f32::max(corner_1.x, corner_2.x);
-    let min_y = f32::min(corner_1.y, corner_2.y);
-    let max_y = f32::max(corner_1.y, corner_2.y);
-
-    if position[0] >= min_x && position[0] <= max_x && position[1] >= min_y && position[1] <= max_y {
-        return true;
-    }
-    return false;
-}
-
-pub fn helper_rect_in_rect(r1: (&Position, &Position), r2: (&Position, &Position)) -> bool {
-    let min_x = f32::min(r1.0.x, r1.1.x);
-    let max_x = f32::max(r1.0.x, r1.1.x);
-    let min_y = f32::min(r1.0.y, r1.1.y);
-    let max_y = f32::max(r1.0.y, r1.1.y);
-
-    let other_min_x = f32::min(r2.0.x, r2.1.x);
-    let other_max_x = f32::max(r2.0.x, r2.1.x);
-    let other_min_y = f32::min(r2.0.y, r2.1.y);
-    let other_max_y = f32::max(r2.0.y, r2.1.y);
-
-    let other_x_touch = min_x <= other_min_x && other_min_x <= max_x;
-    let other_y_touch = min_y <= other_min_y && other_min_y <= max_y;
-    let x_touch = other_min_x <= min_x && min_x <= other_max_x;
-    let y_touch = other_min_y <= min_y && min_y <= other_max_y;
-    if other_x_touch && other_y_touch
-    {
-        return true;
-    }
-    if x_touch && y_touch
-    {
-        return true;
-    }
-    if x_touch && other_y_touch
-    {
-        return true;
-    }
-    if other_x_touch && y_touch
-    {
-        return true;
-    }
-    return false;
-}
+use super::selection::*;
 
 pub fn create_render_resource(
     mut commands: Commands,
@@ -115,7 +70,6 @@ pub fn create_ui(mut commands: Commands,
         })
         .with_children(|parent| {
             parent
-                // left vertical fill (border)
                 .spawn(NodeComponents {
                     style: Style {
                         size: Size::new(Val::Px(100.0), Val::Px(100.0)),
@@ -210,151 +164,82 @@ pub fn mouse_world_position_system (
     }
 }
 
-
-pub fn selection_system(
-    cursor_state: Res<MyCursorState>,
-    // TODO: selection needs to be mutable only if we're modifying the selection.
-    mut selection: ResMut<Selection>,
-    mouse_button: Res<Input<MouseButton>>,
-    mut query: Query<(&mut Selectable, &Transform)>) {
-    if mouse_button.pressed(MouseButton::Left) {
-        if *selection == Selection::None {
-            let position = cursor_state.world_position.clone();
-            *selection = Selection::OnGoing(SelectionPending{begin_pos: position.clone(), begin_pos_ui: cursor_state.ui_position, end_pos: position, end_pos_ui: cursor_state.ui_position});
-        }
-        else if let Selection::OnGoing(on_going) = &mut *selection {
-            on_going.end_pos = cursor_state.world_position.clone();
-            on_going.end_pos_ui = cursor_state.ui_position;
-        }
-    }
-    else {
-        if let Selection::OnGoing(on_going) = &mut *selection {
-            let mouse_pos_end = &cursor_state.world_position;
-            for (mut s, _) in &mut query.iter() {
-                s.is_selected = false;
-            }
-            for (mut a, b) in &mut query.iter() {
-                let selectable_position = b.translation();
-                let half_size = a.half_size;
-                let c1 = Position {x: selectable_position.x() - half_size, y: selectable_position.y() - half_size};
-                let c2 = Position {x: selectable_position.x() + half_size, y: selectable_position.y() + half_size};
-                if helper_rect_in_rect((&c1, &c2), (&on_going.begin_pos, &mouse_pos_end)) {
-                    a.is_selected = true;
-                }
-            }
-            *selection = Selection::None;
-        }
-    }
+pub struct HealthVisualResource {
+    max_health: Handle<ColorMaterial>,
+    current_health: Handle<ColorMaterial>,
 }
 
-pub fn selection_ui_visual(rect: Res<SelectionRectVisual>, selection: Res<Selection>, mut q: Query<(&mut Style, &mut Draw)>) {
-    if let Selection::OnGoing(selection) = &*selection {
-        if let Ok(mut visual) = q.get_mut::<Style>(rect.visual) {
-            let min_x = f32::min(selection.begin_pos_ui.x(), selection.end_pos_ui.x());
-            let min_y = f32::min(selection.begin_pos_ui.y(), selection.end_pos_ui.y());
-            let max_x = f32::max(selection.begin_pos_ui.x(), selection.end_pos_ui.x());
-            let max_y = f32::max(selection.begin_pos_ui.y(), selection.end_pos_ui.y());
-            visual.position = Rect {
-                left: Val::Px(min_x),
-                bottom: Val::Px(min_y),
-                ..Default::default()
-            };
-            visual.size = Size::new(
-                Val::Px(
-                    max_x - min_x)
-                    ,
-                Val::Px(
-                     max_y - min_y));
-        }
-        if let Ok(mut draw) = q.get_mut::<Draw>(rect.visual) {
-            draw.is_visible = true;
-        }
+fn create_health_visual(
+    health_visual_resource: &mut Res<HealthVisualResource>,
+    mut meshes: &mut ResMut<Assets<Mesh>>,
+    health: &Health,
+) -> (SpriteComponents, SpriteComponents) {
+    let max_health_material = health_visual_resource.max_health;
+    let current_health_material = health_visual_resource.current_health;
+    const WIDTH: f32 = 20f32;
+    const HEIGHT: f32 = 5f32;
+    // TODO: know size of the sprite to place its health.
 
-    }
-    else {
-        if let Ok(mut draw) = q.get_mut::<Draw>(rect.visual) {
-            draw.is_visible = false;
-        }
-    }
+    let first_point = (-WIDTH/2f32, 17.5f32);
+    let max_point = (WIDTH/2f32, 17.5f32).into();
+    let current_point = (first_point.0 + (WIDTH * health.current_hp / health.max_hp), 17.5f32).into();
+
+    let line_max = primitive(
+        max_health_material,
+        &mut meshes,
+        ShapeType::Polyline {
+            points: vec![first_point.into(), max_point],
+            closed: false,
+        },
+        TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
+        Vec3::new(0.0, 0.0, 1.0),
+    );
+    let line_current = primitive(
+        current_health_material,
+        &mut meshes,
+        ShapeType::Polyline {
+            points: vec![first_point.into(), current_point],
+            closed: false,
+        },
+        TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
+        Vec3::new(0.0, 0.0, 1.5),
+    );
+    (line_max, line_current)
 }
 
-pub fn selection_visual_system(query_selectables: Query<Mutated<Selectable>>,
-    mut query_visual: Query<(&SelectionVisual, &mut Transform, &Parent)>) {
-
-        for (_, mut transform, parent) in &mut query_visual.iter() {
-            if let Ok(selectable) = query_selectables.get::<Selectable>(parent.0) {
-                if selectable.is_selected {
-                    transform.set_scale(1f32);
-                }
-                else {
-                    // TODO: know how to hide properly something (scale 0 breaks everything (I guess it's removed or break the transform..?))
-                    transform.set_scale(0.1f32);
-                }
-            }
-        }
-}
-
-pub fn move_order_system(
-    cursor_state: Res<MyCursorState>,
-    mouse_button: Res<Input<MouseButton>>,
-    mut query: Query<(&mut Orders, &Selectable)>) {
-        if mouse_button.just_pressed(MouseButton::Right) {
-            for (mut orders, selectable) in &mut query.iter() {
-                if selectable.is_selected {
-                    orders.replace_orders(vec![
-                        Order::Ai(AIUnit::Passive),
-                        Orders::order_move(Vec3::new(cursor_state.world_position.x, cursor_state.world_position.y, 0f32)),
-                        Order::Ai(AIUnit::SeekEnemy),
-                    ]);
-                }
-            }
-        }
-}
-pub fn health_visual_system(mut commands: Commands,
+pub fn health_visual_startup(
+    mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    commands.insert_resource(HealthVisualResource {
+        max_health: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
+        current_health: materials.add(Color::rgb(0.0, 1.0, 0.0).into())
+    });
+}
+
+pub fn health_visual_setup_system(mut commands: Commands,
+    mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_orders: Query<(Entity, &Health, Option<&HealthVisual>)>) {
-    for (entity, health, visual) in &mut q_orders.iter() {
-        let red = materials.add(Color::rgb(0.8, 0.0, 0.0).into());
-        let green = materials.add(Color::rgb(0.0, 8.0, 0.0).into());
-        const WIDTH: f32 = 20f32;
-        const HEIGHT: f32 = 5f32;
-        // TODO: know size of the sprite to place its health.
+    mut q_orders: Query<Without<HealthVisual, (Entity, &Health)>>
+) {
+    for (entity, health) in &mut q_orders.iter() {
+        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
 
-        let first_point = (-WIDTH/2f32, 17.5f32);
-        let max_point = (WIDTH/2f32, 17.5f32).into();
-        let current_point = (first_point.0 + (WIDTH * health.current_hp / health.max_hp), 17.5f32).into();
+        let max_hp_entity = commands.spawn(sprites.0).with(Parent(entity)).current_entity().unwrap();
+        let current_hp_entity = commands.spawn(sprites.1).with(Parent(entity)).current_entity().unwrap();
+        commands.insert_one(entity, HealthVisual{max_hp_visual: max_hp_entity, current_hp_visual: current_hp_entity});
+    }
+}
 
-        let line_max = primitive(
-            red,
-            &mut meshes,
-            ShapeType::Polyline {
-                points: vec![first_point.into(), max_point],
-                closed: false,
-            },
-            TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
-            Vec3::new(0.0, 0.0, 1.0),
-        );
-        let line_current = primitive(
-            green,
-            &mut meshes,
-            ShapeType::Polyline {
-                points: vec![first_point.into(), current_point],
-                closed: false,
-            },
-            TessellationMode::Stroke(&StrokeOptions::default().with_line_width(HEIGHT)),
-            Vec3::new(0.0, 0.0, 1.5),
-        );
+pub fn health_visual_system(mut commands: Commands,
+    mut health_visual_resource: Res<HealthVisualResource>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut q_orders: Query<(&Health, &HealthVisual)>
+) {
+    for (health, visual) in &mut q_orders.iter() {
+        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
 
-        if let Some(visual) = visual {
-            commands.insert(visual.max_hp_visual, line_max);
-            commands.insert(visual.current_hp_visual, line_current);
-        }
-        else  {
-            let max_hp_entity = commands.spawn(line_max).with(Parent(entity)).current_entity().unwrap();
-            let current_hp_entity = commands.spawn(line_current).with(Parent(entity)).current_entity().unwrap();
-            commands.insert_one(entity, HealthVisual{max_hp_visual: max_hp_entity, current_hp_visual: current_hp_entity});
-        }
-
+        commands.insert(visual.max_hp_visual, sprites.0);
+        commands.insert(visual.current_hp_visual, sprites.1);
     }
 }

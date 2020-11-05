@@ -1,6 +1,5 @@
 use bevy::{math, prelude::*};
-use super::components::*;
-use super::components::orders::*;
+use super::{orders::orders_comp::*, components::*};
 
 // Bundles
 #[derive(Bundle)]
@@ -61,11 +60,11 @@ pub fn create_ogre_unit(team: Team, position: Vec3,
         seek_enemy_range: SeekEnemyRange{range: 150f32},
         melee_ability: MeleeAbility {
             range: 10f32,
-            time_to_strike: 1.55f32,
+            time_to_strike: 1.54f32,
         },
-        offensive_stats: OffensiveStats {power: 12f32},
+        offensive_stats: OffensiveStats {power: 13f32},
         melee_ability_state: MeleeAbilityState::Hold,
-        health: Health{max_hp: 200f32, current_hp: 200f32},
+        health: Health{max_hp: 250f32, current_hp: 250f32},
         suffer_damage: SufferDamage::default(),
         orders: Orders::default(),
     }

@@ -2,9 +2,10 @@ use bevy::{prelude::*, app::startup_stage};
 
 pub mod components;
 mod systems;
+pub mod orders;
 
 use systems::*;
-use components::orders::*;
+use self::orders::orders_sys::*;
 
 pub struct CorePlugin;
 
@@ -18,8 +19,6 @@ impl Plugin for CorePlugin {
         .add_system(attack_melee_system.system())
         .add_system(health_system.system())
 
-        .add_system(order_system_debug_init.system())
-        .add_system(order_system_debug.system())
         //.add_system(order_system_debug_change.system())
             ;
     }
