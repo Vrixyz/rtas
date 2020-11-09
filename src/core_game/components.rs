@@ -15,17 +15,33 @@ pub struct OffensiveStats {
 pub struct MeleeAbility {
     pub range: f32,
     pub time_to_strike: f32,
+    pub cooldown: f32,
 }
 
 // TODO: use a mod to encapsulate state and structures, so the naming and and their scope is cleaner.
 pub enum MeleeAbilityState {
-    Hold,
+    Ready,
     WillAttack(MeleeAbilityStateWillAttack),
+    AttackCooldown(MeleeAbilityStateCooldown),
+}
+impl MeleeAbilityState {
+    pub fn interrupt(&mut self) {
+        match self {
+            MeleeAbilityState::Ready => {}
+            MeleeAbilityState::WillAttack(_) => {
+                *self = MeleeAbilityState::Ready;
+            }
+            MeleeAbilityState::AttackCooldown(_) => {}
+        }
+    }
 }
 
 pub struct MeleeAbilityStateWillAttack {
     pub start_time: f32,
     pub target_entity: Entity,
+}
+pub struct MeleeAbilityStateCooldown {
+    pub start_time: f32,
 }
 
 pub struct Team {

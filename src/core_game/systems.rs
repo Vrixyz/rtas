@@ -38,10 +38,11 @@ pub fn create_goblin_unit(team: Team, position: Vec3,
         seek_enemy_range: SeekEnemyRange{range: 100f32},
         melee_ability: MeleeAbility {
             range: 5f32,
-            time_to_strike: 0.35f32,
+            time_to_strike: 0.2f32,
+            cooldown: 0.2f32,
         },
         offensive_stats: OffensiveStats {power: 2f32},
-        melee_ability_state: MeleeAbilityState::Hold,
+        melee_ability_state: MeleeAbilityState::Ready,
         health: Health{max_hp: 20f32, current_hp: 20f32},
         suffer_damage: SufferDamage::default(),
         orders: Orders::default(),
@@ -60,10 +61,11 @@ pub fn create_ogre_unit(team: Team, position: Vec3,
         seek_enemy_range: SeekEnemyRange{range: 150f32},
         melee_ability: MeleeAbility {
             range: 10f32,
-            time_to_strike: 1.54f32,
+            time_to_strike: 1.2f32,
+            cooldown: 0.34f32,
         },
         offensive_stats: OffensiveStats {power: 13f32},
-        melee_ability_state: MeleeAbilityState::Hold,
+        melee_ability_state: MeleeAbilityState::Ready,
         health: Health{max_hp: 250f32, current_hp: 250f32},
         suffer_damage: SufferDamage::default(),
         orders: Orders::default(),
@@ -142,8 +144,10 @@ pub fn ai_system(time: Res<Time>, mut ais: Query<(&Team, &SeekEnemyRange, &mut A
             if let Ok(target_transform) =  attackable.get::<Transform>(ai_attacker.target.clone()) {
                 let size = attackable.get::<UnitSize>(ai_attacker.target).unwrap();
                 if (target_transform.translation() - a_position).length() < melee_ability.range + size.0 + a_size.0 {
-                    a_orders.override_order = Some(Order::Move(Awaitable::Queued(Mover::new_to_target(a_transform.translation()))));
-                    *melee_state = MeleeAbilityState::WillAttack(MeleeAbilityStateWillAttack{start_time: time.time_since_startup().as_secs_f32(), target_entity: ai_attacker.target.clone()});
+                    if matches!(*melee_state, MeleeAbilityState::Ready) {
+                        a_orders.override_order = Some(Order::Move(Awaitable::Queued(Mover::new_to_target(a_transform.translation()))));
+                        *melee_state = MeleeAbilityState::WillAttack(MeleeAbilityStateWillAttack{start_time: time.time_since_startup().as_secs_f32(), target_entity: ai_attacker.target.clone()});    
+                    }
                 }
                 else {
                     // FIXME: if the override_order is already at this value, we shouldn't update it (target is not moving), so:
@@ -165,13 +169,22 @@ pub fn ai_system(time: Res<Time>, mut ais: Query<(&Team, &SeekEnemyRange, &mut A
 pub fn attack_melee_system(time: Res<Time>, mut q: Query<(&MeleeAbility, &mut MeleeAbilityState, &OffensiveStats)>, q_victim: Query<&mut SufferDamage>) {
     for (ability, mut state, offensive_stats) in &mut q.iter() {
         // TODO: use an additional "recovering" state, (+ Client: spawn particles ; floating text for damage)
-        if let MeleeAbilityState::WillAttack(attack_state) = &*state {
-            if time.time_since_startup().as_secs_f32() >  attack_state.start_time + ability.time_to_strike {
-                // TODO: check if still in range
-                if let Ok(mut suffer_damage) = q_victim.get_mut::<SufferDamage>(attack_state.target_entity) {
-                    suffer_damage.new_damage(offensive_stats.power);
+        match &*state {
+            MeleeAbilityState::Ready => {},
+            MeleeAbilityState::WillAttack(attack_state) => {
+                let time = time.time_since_startup().as_secs_f32();
+                if time >  attack_state.start_time + ability.time_to_strike {
+                    // TODO: check if still in range
+                    if let Ok(mut suffer_damage) = q_victim.get_mut::<SufferDamage>(attack_state.target_entity) {
+                        suffer_damage.new_damage(offensive_stats.power);
+                        *state = MeleeAbilityState::AttackCooldown(MeleeAbilityStateCooldown{start_time: time});
+                    }
                 }
-                *state = MeleeAbilityState::Hold;
+            },
+            MeleeAbilityState::AttackCooldown(cooldown) => {
+                if time.time_since_startup().as_secs_f32() > cooldown.start_time + ability.cooldown {
+                    *state = MeleeAbilityState::Ready;
+                }
             }
         }
     }

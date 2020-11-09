@@ -5,16 +5,17 @@ use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, 
 
 use crate::client::components::*;
 
-use super::{selection_comp::SelectionRectVisual, helpers::helper_rect_in_rect};
+use super::{helpers::helper_rect_in_rect, selection_comp::SelectionRectVisual, helpers::helper_in_rect};
 
 pub fn selection_system(
     cursor_state: Res<MyCursorState>,
     // TODO: selection needs to be mutable only if we're modifying the selection.
     mut selection: ResMut<Selection>,
     mouse_button: Res<Input<MouseButton>>,
-    mut query: Query<(&mut Selectable, &Transform)>) {
+    mut query: Query<(Entity, &mut Selectable, &Transform)>) {
+
     if mouse_button.pressed(MouseButton::Left) {
-        if *selection == Selection::None {
+        if matches!(*selection, Selection::Hover(_)) {
             let position = cursor_state.world_position.clone();
             *selection = Selection::OnGoing(SelectionPending{begin_pos: position.clone(), begin_pos_ui: cursor_state.ui_position, end_pos: position, end_pos_ui: cursor_state.ui_position});
         }
@@ -22,25 +23,35 @@ pub fn selection_system(
             on_going.end_pos = cursor_state.world_position.clone();
             on_going.end_pos_ui = cursor_state.ui_position;
         }
+        return;
     }
-    else {
-        if let Selection::OnGoing(on_going) = &mut *selection {
-            let mouse_pos_end = &cursor_state.world_position;
-            for (mut s, _) in &mut query.iter() {
-                s.is_selected = false;
+    if let Selection::OnGoing(on_going) = &mut *selection {
+        let mouse_pos_end = &cursor_state.world_position;
+        for (_, mut s, _) in &mut query.iter() {
+            s.is_selected = false;
+        }
+        for (_, mut a, b) in &mut query.iter() {
+            let selectable_position = b.translation();
+            let half_size = a.half_size;
+            let c1 = Position {x: selectable_position.x() - half_size, y: selectable_position.y() - half_size};
+            let c2 = Position {x: selectable_position.x() + half_size, y: selectable_position.y() + half_size};
+            if helper_rect_in_rect((&c1, &c2), (&on_going.begin_pos, &mouse_pos_end)) {
+                a.is_selected = true;
             }
-            for (mut a, b) in &mut query.iter() {
-                let selectable_position = b.translation();
-                let half_size = a.half_size;
-                let c1 = Position {x: selectable_position.x() - half_size, y: selectable_position.y() - half_size};
-                let c2 = Position {x: selectable_position.x() + half_size, y: selectable_position.y() + half_size};
-                if helper_rect_in_rect((&c1, &c2), (&on_going.begin_pos, &mouse_pos_end)) {
-                    a.is_selected = true;
-                }
-            }
-            *selection = Selection::None;
         }
     }
+    let mouse_pos_end = &cursor_state.world_position;
+    for (e, a, b) in &mut query.iter() {
+        let selectable_position = b.translation();
+        let half_size = a.half_size;
+        let c1 = Position {x: selectable_position.x() - half_size, y: selectable_position.y() - half_size};
+        let c2 = Position {x: selectable_position.x() + half_size, y: selectable_position.y() + half_size};
+        if helper_in_rect(&cursor_state.world_position, &c1, &c2) {
+            *selection = Selection::Hover(Some(e));
+            return;
+        }
+    }
+    *selection = Selection::Hover(None);
 }
 
 pub fn selection_ui_visual(rect: Res<SelectionRectVisual>, selection: Res<Selection>, mut q: Query<(&mut Style, &mut Draw)>) {

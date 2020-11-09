@@ -26,7 +26,7 @@ pub struct SelectionValidated {
 }
 #[derive(PartialEq, Clone)]
 pub enum Selection {
-    None,
+    Hover(Option<Entity>),
     OnGoing(SelectionPending),
 }
 pub struct MyCursorState {
@@ -44,9 +44,4 @@ pub struct RenderResource {
 pub struct RenderSpriteVisual {
     pub color: Handle<ColorMaterial>,
     pub material: Handle<ColorMaterial>
-}
-
-pub struct HealthVisual {
-    pub max_hp_visual: Entity,
-    pub current_hp_visual: Entity,
 }
