@@ -1,5 +1,3 @@
-use bevy::math::Vec3;
-
 use crate::client::components::Position;
 
 pub fn helper_in_rect(position: &Position, corner_1: &Position, corner_2: &Position) -> bool {
@@ -29,20 +27,16 @@ pub fn helper_rect_in_rect(r1: (&Position, &Position), r2: (&Position, &Position
     let other_y_touch = min_y <= other_min_y && other_min_y <= max_y;
     let x_touch = other_min_x <= min_x && min_x <= other_max_x;
     let y_touch = other_min_y <= min_y && min_y <= other_max_y;
-    if other_x_touch && other_y_touch
-    {
+    if other_x_touch && other_y_touch {
         return true;
     }
-    if x_touch && y_touch
-    {
+    if x_touch && y_touch {
         return true;
     }
-    if x_touch && other_y_touch
-    {
+    if x_touch && other_y_touch {
         return true;
     }
-    if other_x_touch && y_touch
-    {
+    if other_x_touch && y_touch {
         return true;
     }
     return false;

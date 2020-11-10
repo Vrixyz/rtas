@@ -1,4 +1,4 @@
-use bevy::{prelude::Entity};
+use bevy::prelude::Entity;
 
 pub struct UnitSize(pub f32);
 #[derive(PartialEq, Eq, Hash)]
@@ -32,7 +32,7 @@ impl MeleeAbilityState {
         match self {
             MeleeAbilityState::Ready => {}
             MeleeAbilityState::MotionBufferExceeded => {}
-            MeleeAbilityState::WillAttack(_)  => {
+            MeleeAbilityState::WillAttack(_) => {
                 *self = MeleeAbilityState::Ready;
             }
             MeleeAbilityState::AttackCooldown(_) => {}
@@ -58,7 +58,7 @@ pub struct Health {
 }
 #[derive(Default)]
 pub struct SufferDamage {
-    pub amount : Vec<f32>
+    pub amount: Vec<f32>,
 }
 
 impl SufferDamage {

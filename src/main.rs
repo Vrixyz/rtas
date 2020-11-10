@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 
-mod core_game;
 mod client;
+mod core_game;
 
-use core_game::CorePlugin;
 use client::ClientPlugin;
+use core_game::CorePlugin;
 
 fn main() {
     App::build()
-    .add_default_plugins()
-    .add_plugin(ClientPlugin)
-    .add_plugin(CorePlugin)
-    .run();
+        .add_default_plugins()
+        .add_plugin(ClientPlugin)
+        .add_plugin(CorePlugin)
+        .run();
 }

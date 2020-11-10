@@ -1,11 +1,11 @@
-use bevy::{prelude::*, app::startup_stage};
+use bevy::prelude::*;
 
 pub mod components;
-mod systems;
 pub mod orders;
+mod systems;
 
-use systems::*;
 use self::orders::orders_sys::*;
+use systems::*;
 
 pub struct CorePlugin;
 

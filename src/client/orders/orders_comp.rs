@@ -20,4 +20,3 @@ pub struct OrderVisualResource {
     pub(super) move_material: Handle<ColorMaterial>,
     pub(super) attack_material: Handle<ColorMaterial>,
 }
-

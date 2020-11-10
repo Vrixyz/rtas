@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use bevy::prelude::*;
 use super::super::core_game::components::*;
+use bevy::prelude::*;
 
 pub struct Selectable {
     pub is_selected: bool,
@@ -10,7 +10,10 @@ pub struct Selectable {
 pub struct SelectionVisual;
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct Position { pub x: f32, pub y: f32 }
+pub struct Position {
+    pub x: f32,
+    pub y: f32,
+}
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct SelectionPending {
@@ -43,5 +46,5 @@ pub struct RenderResource {
 }
 pub struct RenderSpriteVisual {
     pub color: Handle<ColorMaterial>,
-    pub material: Handle<ColorMaterial>
+    pub material: Handle<ColorMaterial>,
 }

@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
+use bevy_prototype_lyon::{
+    prelude::{primitive, ShapeType, StrokeOptions},
+    TessellationMode,
+};
 
-use super::{selection::selection_comp::SelectionRectVisual, super::core_game::components::*};
-use super::super::core_game::orders::*;
+use super::{super::core_game::components::*, selection::selection_comp::SelectionRectVisual};
+
 use super::components::*;
-use super::selection::*;
 
 pub fn create_render_resource(
     mut commands: Commands,
@@ -14,17 +16,23 @@ pub fn create_render_resource(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let texture_goblin = asset_server.load("assets/units/goblin.png").unwrap();
-    
+
     let texture_ogre = asset_server.load("assets/units/ogre.png").unwrap();
     let mut render_sprite_visuals = HashMap::new();
-    render_sprite_visuals.insert(RenderSprite::Goblin, RenderSpriteVisual {
-        color: materials.add(Color::rgb(0.1, 0.9, 0.3).into()),
-        material: materials.add(texture_goblin.into()),
-    });
-    render_sprite_visuals.insert(RenderSprite::Ogre, RenderSpriteVisual {
-        color: materials.add(Color::rgb(1.0, 0.5, 0.0).into()),
-        material: materials.add(texture_ogre.into()),
-    });
+    render_sprite_visuals.insert(
+        RenderSprite::Goblin,
+        RenderSpriteVisual {
+            color: materials.add(Color::rgb(0.1, 0.9, 0.3).into()),
+            material: materials.add(texture_goblin.into()),
+        },
+    );
+    render_sprite_visuals.insert(
+        RenderSprite::Ogre,
+        RenderSpriteVisual {
+            color: materials.add(Color::rgb(1.0, 0.5, 0.0).into()),
+            material: materials.add(texture_ogre.into()),
+        },
+    );
 
     let color_selection = materials.add(Color::rgba(1.0, 1.0, 1.0, 0.2).into());
     let team_colors = vec![
@@ -46,13 +54,11 @@ pub fn create_camera(mut commands: Commands) {
     commands.insert_resource(MyCursorState {
         cursor: Default::default(),
         camera_e: e,
-        world_position: Position{x:0f32, y: 0f32},
+        world_position: Position { x: 0f32, y: 0f32 },
         ui_position: Vec2::default(),
     });
 }
-pub fn create_ui(mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
+pub fn create_ui(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
     let mut selection_rect_visual: Option<Entity> = None;
     commands.insert_resource(Selection::Hover(None));
     commands
@@ -87,13 +93,13 @@ pub fn create_ui(mut commands: Commands,
                         ..Default::default()
                     },
                     ..Default::default()
-                }).for_current_entity(|e| {
+                })
+                .for_current_entity(|e| {
                     selection_rect_visual = Some(e);
                 });
-            })
-    ;
+        });
     if let Some(visual) = selection_rect_visual {
-        commands.insert_resource(SelectionRectVisual{visual});
+        commands.insert_resource(SelectionRectVisual { visual });
     }
 }
 
@@ -101,51 +107,57 @@ pub fn adapt_units_for_client(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     render: Res<RenderResource>,
-    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize, &Transform)>) {
-
+    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize, &Transform)>,
+) {
     for (entity, team, render_sprite, size, transform) in &mut query.iter() {
-        commands.spawn(primitive(
-            render.team_colors[team.id],
-            &mut meshes,
-            ShapeType::Circle(size.0),
-            TessellationMode::Stroke(&StrokeOptions::default()
-                .with_line_width(3.0)
-            ),
-            Vec3::default(),
-        ))
-        .with(Parent(entity));
-        commands.insert(entity, SpriteComponents {
-            material: render.render_sprite_visuals[render_sprite].material,
-            sprite: Sprite::new(Vec2::new(size.0 * 2.0, size.0 * 2.0)),
-            transform: transform.clone(),
-            ..Default::default()
-        });
-        commands.insert_one(entity, 
-            Selectable {is_selected: false, half_size: size.0});
-        
-        commands.spawn(primitive(
-            render.color_selection,
-            &mut meshes,
-            ShapeType::Circle(size.0 + 3.0),
-            TessellationMode::Stroke(&StrokeOptions::default()
-                .with_line_width(3.0)
-            ),
-            Vec3::default(),
-        ))
+        commands
+            .spawn(primitive(
+                render.team_colors[team.id],
+                &mut meshes,
+                ShapeType::Circle(size.0),
+                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(3.0)),
+                Vec3::default(),
+            ))
+            .with(Parent(entity));
+        commands.insert(
+            entity,
+            SpriteComponents {
+                material: render.render_sprite_visuals[render_sprite].material,
+                sprite: Sprite::new(Vec2::new(size.0 * 2.0, size.0 * 2.0)),
+                transform: transform.clone(),
+                ..Default::default()
+            },
+        );
+        commands.insert_one(
+            entity,
+            Selectable {
+                is_selected: false,
+                half_size: size.0,
+            },
+        );
+
+        commands
+            .spawn(primitive(
+                render.color_selection,
+                &mut meshes,
+                ShapeType::Circle(size.0 + 3.0),
+                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(3.0)),
+                Vec3::default(),
+            ))
             .with(SelectionVisual)
-            .with(Parent(entity))
-        ;
+            .with(Parent(entity));
     }
 }
 
 /// Adapted from https://github.com/jamadazi/bevy-cookbook/blob/master/bevy-cookbook.md#convert-screen-coordinates-to-world-coordinates
-pub fn mouse_world_position_system (
+pub fn mouse_world_position_system(
     mut state: ResMut<MyCursorState>,
     ev_cursor: Res<Events<CursorMoved>>,
     // need to get window dimensions
     wnds: Res<Windows>,
     // query to get camera components
-    q_camera: Query<&Transform>) {
+    q_camera: Query<&Transform>,
+) {
     let camera_transform = q_camera.get::<Transform>(state.camera_e).unwrap();
 
     if let Some(ev) = state.cursor.latest(&ev_cursor) {
@@ -158,7 +170,10 @@ pub fn mouse_world_position_system (
 
         // apply the camera transform
         let pos_wld = *camera_transform.value() * p.extend(0.0).extend(1.0);
-        let position = Position{x:pos_wld.x(),y:pos_wld.y()};
+        let position = Position {
+            x: pos_wld.x(),
+            y: pos_wld.y(),
+        };
         state.world_position = position;
         state.ui_position = ev.position;
     }
@@ -186,9 +201,13 @@ fn create_health_visual(
     const HEIGHT: f32 = 5f32;
     // TODO: know size of the sprite to place its health.
 
-    let first_point = (-WIDTH/2f32, 17.5f32);
-    let max_point = (WIDTH/2f32, 17.5f32).into();
-    let current_point = (first_point.0 + (WIDTH * health.current_hp / health.max_hp), 17.5f32).into();
+    let first_point = (-WIDTH / 2f32, 17.5f32);
+    let max_point = (WIDTH / 2f32, 17.5f32).into();
+    let current_point = (
+        first_point.0 + (WIDTH * health.current_hp / health.max_hp),
+        17.5f32,
+    )
+        .into();
 
     let line_max = primitive(
         max_health_material,
@@ -213,34 +232,47 @@ fn create_health_visual(
     (line_max, line_current)
 }
 
-pub fn health_visual_startup(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
+pub fn health_visual_startup(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
     commands.insert_resource(HealthVisualResource {
         max_health: materials.add(Color::rgb(1.0, 0.0, 0.0).into()),
-        current_health: materials.add(Color::rgb(0.0, 1.0, 0.0).into())
+        current_health: materials.add(Color::rgb(0.0, 1.0, 0.0).into()),
     });
 }
 
-pub fn health_visual_setup_system(mut commands: Commands,
+pub fn health_visual_setup_system(
+    mut commands: Commands,
     mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_orders: Query<Without<HealthVisual, (Entity, &Health)>>
+    mut q_orders: Query<Without<HealthVisual, (Entity, &Health)>>,
 ) {
     for (entity, health) in &mut q_orders.iter() {
         let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
 
-        let max_hp_entity = commands.spawn(sprites.0).with(Parent(entity)).current_entity().unwrap();
-        let current_hp_entity = commands.spawn(sprites.1).with(Parent(entity)).current_entity().unwrap();
-        commands.insert_one(entity, HealthVisual{max_hp_visual: max_hp_entity, current_hp_visual: current_hp_entity});
+        let max_hp_entity = commands
+            .spawn(sprites.0)
+            .with(Parent(entity))
+            .current_entity()
+            .unwrap();
+        let current_hp_entity = commands
+            .spawn(sprites.1)
+            .with(Parent(entity))
+            .current_entity()
+            .unwrap();
+        commands.insert_one(
+            entity,
+            HealthVisual {
+                max_hp_visual: max_hp_entity,
+                current_hp_visual: current_hp_entity,
+            },
+        );
     }
 }
 
-pub fn health_visual_system(mut commands: Commands,
+pub fn health_visual_system(
+    mut commands: Commands,
     mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_orders: Query<(&Health, &HealthVisual)>
+    mut q_orders: Query<(&Health, &HealthVisual)>,
 ) {
     for (health, visual) in &mut q_orders.iter() {
         let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
@@ -256,7 +288,6 @@ pub mod ability {
 
     use crate::core_game::components::*;
 
-    
     pub struct AbilityVisualResource {
         background: Handle<ColorMaterial>,
         current: Handle<ColorMaterial>,
@@ -276,11 +307,11 @@ pub mod ability {
         const WIDTH: f32 = 20f32;
         const HEIGHT: f32 = 2f32;
         // TODO: know size of the sprite to place its health.
-    
-        let first_point = (-WIDTH/2f32, 15.5f32);
-        let max_point = (WIDTH/2f32, 15.5f32).into();
+
+        let first_point = (-WIDTH / 2f32, 15.5f32);
+        let max_point = (WIDTH / 2f32, 15.5f32).into();
         let current_point = (first_point.0 + (WIDTH * ratio), 15.5f32).into();
-    
+
         let line_max = primitive(
             background_material,
             &mut meshes,
@@ -310,45 +341,77 @@ pub mod ability {
     ) {
         commands.insert_resource(AbilityVisualResource {
             background: materials.add(Color::rgb(0.25, 0.25, 0.25).into()),
-            current: materials.add(Color::rgb(1.0, 1.0, 1.0).into())
+            current: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
         });
     }
-    pub fn ability_visual_setup(mut commands: Commands,
+    pub fn ability_visual_setup(
+        mut commands: Commands,
         mut ability_visual_resource: Res<AbilityVisualResource>,
         mut meshes: ResMut<Assets<Mesh>>,
-        mut q_orders: Query<Without<AbilityVisual, (Entity, &MeleeAbility, &MeleeAbilityState)>>
+        mut q_orders: Query<Without<AbilityVisual, (Entity, &MeleeAbility, &MeleeAbilityState)>>,
     ) {
-        for (entity, ability, state) in &mut q_orders.iter() {
+        for (entity, _, _) in &mut q_orders.iter() {
             let sprites = create_ability_visual(&mut ability_visual_resource, &mut meshes, 0f32);
-    
-            let max_hp_entity = commands.spawn(sprites.0).with(Parent(entity)).current_entity().unwrap();
-            let current_hp_entity = commands.spawn(sprites.1).with(Parent(entity)).current_entity().unwrap();
-            commands.insert_one(entity, AbilityVisual{background: max_hp_entity, current: current_hp_entity});
+
+            let max_hp_entity = commands
+                .spawn(sprites.0)
+                .with(Parent(entity))
+                .current_entity()
+                .unwrap();
+            let current_hp_entity = commands
+                .spawn(sprites.1)
+                .with(Parent(entity))
+                .current_entity()
+                .unwrap();
+            commands.insert_one(
+                entity,
+                AbilityVisual {
+                    background: max_hp_entity,
+                    current: current_hp_entity,
+                },
+            );
         }
     }
-    
-    pub fn ability_visual(mut commands: Commands,
-        mut time: Res<Time>,
+
+    pub fn ability_visual(
+        mut commands: Commands,
+        time: Res<Time>,
         mut ability_visual_resource: Res<AbilityVisualResource>,
         mut meshes: ResMut<Assets<Mesh>>,
-        mut q_orders: Query<(&MeleeAbility, &MeleeAbilityState, &AbilityVisual)>
+        mut q_orders: Query<(&MeleeAbility, &MeleeAbilityState, &AbilityVisual)>,
     ) {
         for (ability, state, visual) in &mut q_orders.iter() {
             let sprites = match state {
-                MeleeAbilityState::Ready => {
-                    Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, 0f32))
-                },
+                MeleeAbilityState::Ready => Some(create_ability_visual(
+                    &mut ability_visual_resource,
+                    &mut meshes,
+                    0f32,
+                )),
                 MeleeAbilityState::WillAttack(will_attack) => {
-                    let ratio = (time.seconds_since_startup as f32 - will_attack.start_time) / ability.time_to_strike;
-                    Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, ratio))
+                    let ratio = (time.seconds_since_startup as f32 - will_attack.start_time)
+                        / ability.time_to_strike;
+                    Some(create_ability_visual(
+                        &mut ability_visual_resource,
+                        &mut meshes,
+                        ratio,
+                    ))
                 }
                 MeleeAbilityState::AttackCooldown(cooldown) => {
-                    let ratio = (time.seconds_since_startup as f32 - cooldown.start_time) / ability.cooldown;
-                    Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, 1f32 - ratio))
+                    let ratio = (time.seconds_since_startup as f32 - cooldown.start_time)
+                        / ability.cooldown;
+                    Some(create_ability_visual(
+                        &mut ability_visual_resource,
+                        &mut meshes,
+                        1f32 - ratio,
+                    ))
                 }
                 MeleeAbilityState::MotionBufferExceeded => {
                     let ratio = 0.0;
-                    Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, ratio))
+                    Some(create_ability_visual(
+                        &mut ability_visual_resource,
+                        &mut meshes,
+                        ratio,
+                    ))
                 }
             };
             if let Some(sprites) = sprites {
