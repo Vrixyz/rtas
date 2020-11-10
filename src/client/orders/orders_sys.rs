@@ -24,6 +24,7 @@ pub fn move_order_system(
                                 orders.replace_orders(vec![
                                     Order::Ai(AIUnit::Attack(Attack {
                                         target: selected,
+                                        chase_on_motion_buffer_exceeded: true,
                                     })),
                                 ]);
                             }

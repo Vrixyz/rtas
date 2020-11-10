@@ -346,6 +346,10 @@ pub mod ability {
                     let ratio = (time.seconds_since_startup as f32 - cooldown.start_time) / ability.cooldown;
                     Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, 1f32 - ratio))
                 }
+                MeleeAbilityState::MotionBufferExceeded => {
+                    let ratio = 0.0;
+                    Some(create_ability_visual(&mut ability_visual_resource, &mut meshes, ratio))
+                }
             };
             if let Some(sprites) = sprites {
                 commands.insert(visual.background, sprites.0);

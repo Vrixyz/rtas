@@ -14,6 +14,8 @@ pub struct OffensiveStats {
 
 pub struct MeleeAbility {
     pub range: f32,
+    // additional range to account for units movement
+    pub motion_buffer_range: f32,
     pub time_to_strike: f32,
     pub cooldown: f32,
 }
@@ -23,12 +25,14 @@ pub enum MeleeAbilityState {
     Ready,
     WillAttack(MeleeAbilityStateWillAttack),
     AttackCooldown(MeleeAbilityStateCooldown),
+    MotionBufferExceeded,
 }
 impl MeleeAbilityState {
     pub fn interrupt(&mut self) {
         match self {
             MeleeAbilityState::Ready => {}
-            MeleeAbilityState::WillAttack(_) => {
+            MeleeAbilityState::MotionBufferExceeded => {}
+            MeleeAbilityState::WillAttack(_)  => {
                 *self = MeleeAbilityState::Ready;
             }
             MeleeAbilityState::AttackCooldown(_) => {}
@@ -78,4 +82,5 @@ pub enum AIUnit {
 #[derive(Clone, Debug)]
 pub struct Attack {
     pub target: Entity,
+    pub chase_on_motion_buffer_exceeded: bool,
 }

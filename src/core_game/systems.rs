@@ -38,6 +38,7 @@ pub fn create_goblin_unit(team: Team, position: Vec3,
         seek_enemy_range: SeekEnemyRange{range: 100f32},
         melee_ability: MeleeAbility {
             range: 5f32,
+            motion_buffer_range: 3f32,
             time_to_strike: 0.2f32,
             cooldown: 0.2f32,
         },
@@ -61,6 +62,7 @@ pub fn create_ogre_unit(team: Team, position: Vec3,
         seek_enemy_range: SeekEnemyRange{range: 150f32},
         melee_ability: MeleeAbility {
             range: 10f32,
+            motion_buffer_range: 3f32,
             time_to_strike: 1.2f32,
             cooldown: 0.34f32,
         },
@@ -120,7 +122,7 @@ pub fn mover_update(time: Res<Time>, mut query: Query<(&mut Mover, &Speed, &mut 
 }
 
 pub fn ai_system(time: Res<Time>, mut ais: Query<(&Team, &SeekEnemyRange, &mut AIUnit, &mut Orders, &MeleeAbility, &mut MeleeAbilityState, &Transform, &UnitSize)>, mut attackable: Query<(&Team, &Transform, Entity, &UnitSize)>) {
-    for (a_team, seekEnemyRange, mut ai, mut a_orders, melee_ability, mut melee_state, a_transform, a_size) in &mut ais.iter() {
+    for (a_team, seek_enemy_range, mut ai, mut a_orders, melee_ability, mut melee_state, a_transform, a_size) in &mut ais.iter() {
         if matches!(*ai, AIUnit::Passive) {
             continue;
         }
@@ -130,18 +132,26 @@ pub fn ai_system(time: Res<Time>, mut ais: Query<(&Team, &SeekEnemyRange, &mut A
         let a_position = a_transform.translation();
         let mut new_ai: Option<AIUnit> = None;
         if matches!(*ai, AIUnit::SeekEnemy) {
+            let mut closest_distance = f32::MAX;
             for (b_team, b_transform, b_entity, b_size) in &mut attackable.iter() {
                 if a_team.id == b_team.id {
                     continue;
                 }
-                if (a_position - b_transform.translation()).length() <= seekEnemyRange.range {
-                    new_ai = Some(AIUnit::Attack(Attack{target: b_entity.clone()}));
-                    break;
+                let new_distance = (a_position - b_transform.translation()).length();
+                if new_distance <= seek_enemy_range.range && new_distance < closest_distance {
+                    closest_distance = new_distance;
+                    new_ai = Some(AIUnit::Attack(Attack{target: b_entity.clone(), chase_on_motion_buffer_exceeded: false}));
                 }
             }
         }
         else if let AIUnit::Attack(ai_attacker) = &*ai {
             if let Ok(target_transform) =  attackable.get::<Transform>(ai_attacker.target.clone()) {
+                if matches!(*melee_state, MeleeAbilityState::MotionBufferExceeded) {
+                    if !ai_attacker.chase_on_motion_buffer_exceeded {
+                        *ai = AIUnit::SeekEnemy;
+                        continue;
+                    }
+                }
                 let size = attackable.get::<UnitSize>(ai_attacker.target).unwrap();
                 if (target_transform.translation() - a_position).length() < melee_ability.range + size.0 + a_size.0 {
                     if matches!(*melee_state, MeleeAbilityState::Ready) {
@@ -166,21 +176,47 @@ pub fn ai_system(time: Res<Time>, mut ais: Query<(&Team, &SeekEnemyRange, &mut A
     }
 }
 
-pub fn attack_melee_system(time: Res<Time>, mut q: Query<(&MeleeAbility, &mut MeleeAbilityState, &OffensiveStats)>, q_victim: Query<&mut SufferDamage>) {
-    for (ability, mut state, offensive_stats) in &mut q.iter() {
+pub fn attack_melee_system(time: Res<Time>, mut q: Query<(&Transform, &MeleeAbility, &mut MeleeAbilityState, &OffensiveStats, &UnitSize)>, q_victim: Query<(&Transform, &UnitSize, &mut SufferDamage)>) {
+    for (transform, ability, mut state, offensive_stats, size) in &mut q.iter() {
         // TODO: use an additional "recovering" state, (+ Client: spawn particles ; floating text for damage)
         match &*state {
             MeleeAbilityState::Ready => {},
             MeleeAbilityState::WillAttack(attack_state) => {
+                if let Ok(a_transform) = q_victim.get::<Transform>(attack_state.target_entity) {
+                    // Check if still in range
+                    let a_size = if let Ok(a_size) = q_victim.get::<UnitSize>(attack_state.target_entity) {
+                        a_size.0
+                    }
+                    else {
+                        0f32
+                    };
+                    let distance = (a_transform.translation() - transform.translation()).length();
+                    if distance > ability.range + ability.motion_buffer_range + size.0 + a_size {
+                        *state = MeleeAbilityState::MotionBufferExceeded;
+                        return;
+                    }
+                }
+                else {
+                    // target is not valid
+                    *state = MeleeAbilityState::Ready;
+                    return;
+                }
                 let time = time.time_since_startup().as_secs_f32();
                 if time >  attack_state.start_time + ability.time_to_strike {
-                    // TODO: check if still in range
                     if let Ok(mut suffer_damage) = q_victim.get_mut::<SufferDamage>(attack_state.target_entity) {
                         suffer_damage.new_damage(offensive_stats.power);
                         *state = MeleeAbilityState::AttackCooldown(MeleeAbilityStateCooldown{start_time: time});
                     }
+                    else {
+                        // target is not valid
+                        *state = MeleeAbilityState::Ready;
+                        return;
+                    }
                 }
             },
+            MeleeAbilityState::MotionBufferExceeded => {
+                *state = MeleeAbilityState::Ready;
+            }
             MeleeAbilityState::AttackCooldown(cooldown) => {
                 if time.time_since_startup().as_secs_f32() > cooldown.start_time + ability.cooldown {
                     *state = MeleeAbilityState::Ready;
