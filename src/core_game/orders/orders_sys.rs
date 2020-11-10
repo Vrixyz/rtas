@@ -6,7 +6,7 @@ use super::orders_comp::*;
 pub fn order_system(
     mut query: Query<(&mut Orders, &mut Mover, &mut AIUnit, &mut MeleeAbilityState)>,
 ) {
-    for (mut orders, mut mover, mut ai, mut melee_ability_state) in &mut query.iter() {
+    for (mut orders, mut mover, mut ai, mut melee_ability_state) in query.iter_mut() {
         if orders.override_order.is_some() {
             if let Some(order) = orders.override_order.as_mut() {
                 if let Err(not_done) =

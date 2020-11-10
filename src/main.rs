@@ -8,7 +8,7 @@ use core_game::CorePlugin;
 
 fn main() {
     App::build()
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .add_plugin(ClientPlugin)
         .add_plugin(CorePlugin)
         .run();

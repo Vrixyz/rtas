@@ -29,11 +29,11 @@ pub fn selection_system(
     }
     if let Selection::OnGoing(on_going) = &mut *selection {
         let mouse_pos_end = &cursor_state.world_position;
-        for (_, mut s, _) in &mut query.iter() {
+        for (_, mut s, _) in query.iter_mut() {
             s.is_selected = false;
         }
-        for (_, mut a, b) in &mut query.iter() {
-            let selectable_position = b.translation();
+        for (_, mut a, b) in query.iter_mut() {
+            let selectable_position = b.translation;
             let half_size = a.half_size;
             let c1 = Position {
                 x: selectable_position.x() - half_size,
@@ -48,8 +48,8 @@ pub fn selection_system(
             }
         }
     }
-    for (e, a, b) in &mut query.iter() {
-        let selectable_position = b.translation();
+    for (e, a, b) in query.iter_mut() {
+        let selectable_position = b.translation;
         let half_size = a.half_size;
         let c1 = Position {
             x: selectable_position.x() - half_size,
@@ -70,10 +70,10 @@ pub fn selection_system(
 pub fn selection_ui_visual(
     rect: Res<SelectionRectVisual>,
     selection: Res<Selection>,
-    q: Query<(&mut Style, &mut Draw)>,
+    mut q: Query<(&mut Style, &mut Draw)>,
 ) {
     if let Selection::OnGoing(selection) = &*selection {
-        if let Ok(mut visual) = q.get_mut::<Style>(rect.visual) {
+        if let Ok(mut visual) = q.get_component_mut::<Style>(rect.visual) {
             let min_x = f32::min(selection.begin_pos_ui.x(), selection.end_pos_ui.x());
             let min_y = f32::min(selection.begin_pos_ui.y(), selection.end_pos_ui.y());
             let max_x = f32::max(selection.begin_pos_ui.x(), selection.end_pos_ui.x());
@@ -85,11 +85,11 @@ pub fn selection_ui_visual(
             };
             visual.size = Size::new(Val::Px(max_x - min_x), Val::Px(max_y - min_y));
         }
-        if let Ok(mut draw) = q.get_mut::<Draw>(rect.visual) {
+        if let Ok(mut draw) = q.get_component_mut::<Draw>(rect.visual) {
             draw.is_visible = true;
         }
     } else {
-        if let Ok(mut draw) = q.get_mut::<Draw>(rect.visual) {
+        if let Ok(mut draw) = q.get_component_mut::<Draw>(rect.visual) {
             draw.is_visible = false;
         }
     }
@@ -99,13 +99,13 @@ pub fn selection_visual_system(
     query_selectables: Query<Mutated<Selectable>>,
     mut query_visual: Query<(&SelectionVisual, &mut Transform, &Parent)>,
 ) {
-    for (_, mut transform, parent) in &mut query_visual.iter() {
-        if let Ok(selectable) = query_selectables.get::<Selectable>(parent.0) {
+    for (_, mut transform, parent) in query_visual.iter_mut() {
+        if let Ok(selectable) = query_selectables.get_component::<Selectable>(parent.0) {
             if selectable.is_selected {
-                transform.set_scale(1f32);
+                transform.scale = Vec3::new(1f32, 1f32, 1f32);
             } else {
                 // TODO: know how to hide properly something (scale 0 breaks everything (I guess it's removed or break the transform..?))
-                transform.set_scale(0.1f32);
+                transform.scale = Vec3::new(0.1, 0.1, 0.1);
             }
         }
     }

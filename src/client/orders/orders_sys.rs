@@ -25,9 +25,9 @@ pub fn move_order_system(
 ) {
     if mouse_button.just_pressed(MouseButton::Right) {
         if let Selection::Hover(Some(selected)) = *selection {
-            if let Ok(a_team) = q_attackables.get::<Team>(selected) {
+            if let Ok(a_team) = q_attackables.get_component::<Team>(selected) {
                 if a_team.id != team.team.id {
-                    for (mut orders, selectable, b_team) in &mut query.iter() {
+                    for (mut orders, selectable, b_team) in query.iter_mut() {
                         if b_team.id != team.team.id {
                             continue;
                         }
@@ -43,7 +43,7 @@ pub fn move_order_system(
             }
         }
 
-        for (mut orders, selectable, b_team) in &mut query.iter() {
+        for (mut orders, selectable, b_team) in query.iter_mut() {
             if b_team.id != team.team.id {
                 continue;
             }
@@ -74,9 +74,9 @@ pub fn order_system_visual_startup(
 
 pub fn order_system_visual_init(
     mut commands: Commands,
-    mut q_orders: Query<(Entity, &Transform, &Orders, Option<&DebugOrderMove>)>,
+    q_orders: Query<(Entity, &Transform, &Orders, Option<&DebugOrderMove>)>,
 ) {
-    for (entity, transform, _, debug_marker) in &mut q_orders.iter() {
+    for (entity, transform, _, debug_marker) in q_orders.iter() {
         if debug_marker.is_none() {
             let graphic_entity = commands
                 .spawn((
@@ -101,24 +101,24 @@ pub fn order_system_visual(
     mut commands: Commands,
     order_visual_resource: Res<OrderVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_debug: Query<(Entity, &DebugOrderMoveGraphic)>,
+    q_debug: Query<(Entity, &DebugOrderMoveGraphic)>,
     q_exists: Query<(Entity, &Transform, &DebugOrderMove)>,
     q_orders: Query<Mutated<Orders>>,
 ) {
     for (graphic_debug_entity, debug) in &mut q_debug.iter() {
-        let transform = q_exists.get::<Transform>(debug.entity_to_debug);
+        let transform = q_exists.get_component::<Transform>(debug.entity_to_debug);
         if transform.is_err() {
             commands.despawn(graphic_debug_entity);
             continue;
         }
-        let orders = q_orders.get::<Orders>(debug.entity_to_debug);
+        let orders = q_orders.get_component::<Orders>(debug.entity_to_debug);
         if orders.is_err() {
             continue;
         }
         let transform = transform.unwrap();
         let orders = orders.unwrap();
 
-        let position = transform.translation();
+        let position = transform.translation;
         let first_point = (position.x(), position.y()).into();
 
         let mut waypoints =
@@ -134,9 +134,9 @@ pub fn order_system_visual(
             } else {
                 vec![first_point]
             };
-        let mut material = order_visual_resource.move_material;
+        let mut material = &order_visual_resource.move_material;
         if let Some(override_order) = &orders.override_order {
-            material = order_visual_resource.attack_material;
+            material = &order_visual_resource.attack_material;
             if let Order::Move(Awaitable::Queued(mover)) = override_order {
                 waypoints.push(
                     (
@@ -159,7 +159,7 @@ pub fn order_system_visual(
             }
         });
         let line = primitive(
-            material,
+            material.clone(),
             &mut meshes,
             ShapeType::Polyline {
                 points: waypoints,
@@ -172,8 +172,8 @@ pub fn order_system_visual(
     }
 }
 
-pub fn order_system_debug_change(mut q_orders: Query<(Entity, Mutated<Orders>)>) {
-    for (entity, orders) in &mut q_orders.iter() {
+pub fn order_system_debug_change(q_orders: Query<(Entity, Mutated<Orders>)>) {
+    for (entity, orders) in q_orders.iter() {
         dbg!(entity, &*orders);
     }
 }
