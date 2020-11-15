@@ -7,6 +7,9 @@ pub struct Mover {
     pub(super) target_position: Vec3,
     pub is_target_reached: bool,
 }
+pub struct RotateBeforeMove {
+    pub rotation_speed: f32,
+}
 #[derive(Clone, Debug)]
 pub struct Speed {
     pub speed: f32,

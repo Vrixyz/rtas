@@ -57,7 +57,8 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
         transform: Transform::from_translation(position),
         render_sprite: RenderSprite::Ogre,
         mover: Mover::new(position),
-        speed: Speed { speed: 50f32 },
+        speed: Speed { speed: 30f32,
+        },
         team,
         ai_unit: AIUnit::SeekEnemy,
         seek_enemy_range: SeekEnemyRange { range: 150f32 },
@@ -82,43 +83,13 @@ pub fn create_units(mut commands: Commands) {
     const OFFSET_POSITION: f32 = 40f32;
     for i in 0..5 {
         let position = Vec3::new((i as f32 - 5f32 / 2f32) * OFFSET_POSITION, 0.0, 0.0);
-        commands.spawn(create_goblin_unit(Team { id: 0 }, position));
+        commands.spawn(create_goblin_unit(Team { id: 0 }, position))
+        .with(RotateBeforeMove {rotation_speed: 720f32})
+        ;
     }
-
     let ogre_position = Vec3::new(0.0, -200.0, 0.0);
-    commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position));
-}
-
-pub fn mover_update(
-    time: Res<Time>,
-    mut query: Query<(
-        &mut Mover,
-        &Speed,
-        &mut Transform,
-        Option<&MeleeAbilityState>,
-    )>,
-) {
-    for (mut mover, speed, mut transform, melee_state) in query.iter_mut() {
-        if matches!(melee_state, Some(MeleeAbilityState::WillAttack(_))) {
-            continue;
-        }
-        if mover.is_target_reached {
-            continue;
-        }
-        let position = transform.translation;
-        let target = mover.get_target_position();
-        let mut offset = *target - position;
-        let offset_distance = offset.length();
-        if offset_distance < 0.01 {
-            mover.is_target_reached = true;
-            continue;
-        }
-        offset = offset.normalize();
-        let distance_to_move = speed.speed * time.delta_seconds_f64 as f32;
-        offset *= f32::min(distance_to_move, offset_distance);
-
-        transform.translation = position + math::vec3(offset.x(), offset.y(), 0f32);
-    }
+    commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
+        .with(RotateBeforeMove {rotation_speed: 90f32});
 }
 
 pub fn ai_system(
@@ -169,7 +140,8 @@ pub fn ai_system(
                     }));
                 }
             }
-        } else if let AIUnit::Attack(ai_attacker) = &*ai {
+        }
+        if let AIUnit::Attack(ai_attacker) = &*ai {
             if let Ok(target_transform) = attackable.get_component::<Transform>(ai_attacker.target.clone()) {
                 if matches!(*melee_state, MeleeAbilityState::MotionBufferExceeded) {
                     if !ai_attacker.chase_on_motion_buffer_exceeded {

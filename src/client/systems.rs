@@ -194,18 +194,20 @@ fn create_health_visual(
     health_visual_resource: &mut Res<HealthVisualResource>,
     mut meshes: &mut ResMut<Assets<Mesh>>,
     health: &Health,
+    size: &UnitSize,
 ) -> (SpriteComponents, SpriteComponents) {
     let max_health_material = &health_visual_resource.max_health;
     let current_health_material = &health_visual_resource.current_health;
     const WIDTH: f32 = 20f32;
     const HEIGHT: f32 = 5f32;
-    // TODO: know size of the sprite to place its health.
+    
+    let offset = size.0;
 
-    let first_point = (-WIDTH / 2f32, 17.5f32);
-    let max_point = (WIDTH / 2f32, 17.5f32).into();
+    let first_point = (-WIDTH / 2f32, offset);
+    let max_point = (WIDTH / 2f32, offset).into();
     let current_point = (
         first_point.0 + (WIDTH * health.current_hp / health.max_hp),
-        17.5f32,
+        offset,
     )
         .into();
 
@@ -243,10 +245,10 @@ pub fn health_visual_setup_system(
     mut commands: Commands,
     mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_orders: Query<Without<HealthVisual, (Entity, &Health)>>,
+    mut q_health: Query<Without<HealthVisual, (Entity, &Health, &UnitSize)>>,
 ) {
-    for (entity, health) in q_orders.iter_mut() {
-        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
+    for (entity, health, size) in q_health.iter_mut() {
+        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health, size);
 
         let max_hp_entity = commands
             .spawn(sprites.0)
@@ -272,10 +274,10 @@ pub fn health_visual_system(
     mut commands: Commands,
     mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_orders: Query<(&Health, &HealthVisual)>,
+    mut q_health: Query<(&Health, &HealthVisual, &UnitSize)>,
 ) {
-    for (health, visual) in q_orders.iter_mut() {
-        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health);
+    for (health, visual, size) in q_health.iter_mut() {
+        let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health, size);
 
         commands.insert(visual.max_hp_visual, sprites.0);
         commands.insert(visual.current_hp_visual, sprites.1);
@@ -300,17 +302,18 @@ pub mod ability {
     fn create_ability_visual(
         health_visual_resource: &mut Res<AbilityVisualResource>,
         mut meshes: &mut ResMut<Assets<Mesh>>,
+        size: &UnitSize,
         ratio: f32,
     ) -> (SpriteComponents, SpriteComponents) {
         let background_material = &health_visual_resource.background;
         let current_material = &health_visual_resource.current;
         const WIDTH: f32 = 20f32;
         const HEIGHT: f32 = 2f32;
-        // TODO: know size of the sprite to place its health.
+        let offset = size.0 - 2.5 - HEIGHT;
 
-        let first_point = (-WIDTH / 2f32, 15.5f32);
-        let max_point = (WIDTH / 2f32, 15.5f32).into();
-        let current_point = (first_point.0 + (WIDTH * ratio), 15.5f32).into();
+        let first_point = (-WIDTH / 2f32, offset);
+        let max_point = (WIDTH / 2f32, offset).into();
+        let current_point = (first_point.0 + (WIDTH * ratio), offset).into();
 
         let line_max = primitive(
             background_material.clone(),
@@ -348,10 +351,10 @@ pub mod ability {
         mut commands: Commands,
         mut ability_visual_resource: Res<AbilityVisualResource>,
         mut meshes: ResMut<Assets<Mesh>>,
-        mut q_orders: Query<Without<AbilityVisual, (Entity, &MeleeAbility, &MeleeAbilityState)>>,
+        mut q_orders: Query<Without<AbilityVisual, (Entity, &MeleeAbility, &MeleeAbilityState, &UnitSize)>>,
     ) {
-        for (entity, _, _) in q_orders.iter_mut() {
-            let sprites = create_ability_visual(&mut ability_visual_resource, &mut meshes, 0f32);
+        for (entity, _, _, size) in q_orders.iter_mut() {
+            let sprites = create_ability_visual(&mut ability_visual_resource, &mut meshes, size, 0f32);
 
             let max_hp_entity = commands
                 .spawn(sprites.0)
@@ -378,13 +381,14 @@ pub mod ability {
         time: Res<Time>,
         mut ability_visual_resource: Res<AbilityVisualResource>,
         mut meshes: ResMut<Assets<Mesh>>,
-        mut q_orders: Query<(&MeleeAbility, &MeleeAbilityState, &AbilityVisual)>,
+        mut q_orders: Query<(&MeleeAbility, &MeleeAbilityState, &AbilityVisual, &UnitSize)>,
     ) {
-        for (ability, state, visual) in q_orders.iter_mut() {
+        for (ability, state, visual, size) in q_orders.iter_mut() {
             let sprites = match state {
                 MeleeAbilityState::Ready => Some(create_ability_visual(
                     &mut ability_visual_resource,
                     &mut meshes,
+                    size,
                     0f32,
                 )),
                 MeleeAbilityState::WillAttack(will_attack) => {
@@ -393,6 +397,7 @@ pub mod ability {
                     Some(create_ability_visual(
                         &mut ability_visual_resource,
                         &mut meshes,
+                        size,
                         ratio,
                     ))
                 }
@@ -402,6 +407,7 @@ pub mod ability {
                     Some(create_ability_visual(
                         &mut ability_visual_resource,
                         &mut meshes,
+                        size,
                         1f32 - ratio,
                     ))
                 }
@@ -410,6 +416,7 @@ pub mod ability {
                     Some(create_ability_visual(
                         &mut ability_visual_resource,
                         &mut meshes,
+                        size,
                         ratio,
                     ))
                 }
