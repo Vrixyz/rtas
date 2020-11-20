@@ -15,7 +15,7 @@ impl Plugin for PhysicsPlugin {
         .add_system_to_stage(stage::PRE_UPDATE, mover_update.system())
         .add_system_to_stage(stage::POST_UPDATE, physics_init.system())
 
-        .add_plugin(RapierRenderPlugin)
+        //.add_plugin(RapierRenderPlugin)
             ;
     }
 }

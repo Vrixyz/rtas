@@ -6,6 +6,7 @@ use bevy::{math, prelude::*};
 pub struct UnitBundle {
     size: UnitSize,
     transform: Transform,
+    global_transform: GlobalTransform,
     render_sprite: RenderSprite,
 
     // should be added after (for all units having "Speed")
@@ -29,6 +30,7 @@ pub fn create_goblin_unit(team: Team, position: Vec3) -> UnitBundle {
     UnitBundle {
         size: UnitSize(20f32),
         transform: Transform::from_translation(position),
+        global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Goblin,
         mover: Mover::new(position),
         speed: Speed { speed: 120f32 },
@@ -55,6 +57,7 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
     UnitBundle {
         size: UnitSize(40f32),
         transform: Transform::from_translation(position),
+        global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Ogre,
         mover: Mover::new(position),
         speed: Speed { speed: 30f32,
@@ -81,15 +84,21 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
 
 pub fn create_units(mut commands: Commands) {
     const OFFSET_POSITION: f32 = 40f32;
-    for i in 0..5 {
-        let position = Vec3::new((i as f32 - 5f32 / 2f32) * OFFSET_POSITION, 0.0, 0.0);
+    const nb_goblins: u32 = 5;
+    for i in 0..nb_goblins {
+        let position = Vec3::new((i as f32 - (nb_goblins as f32) / 2f32) * OFFSET_POSITION, 0.0, 0.0);
         commands.spawn(create_goblin_unit(Team { id: 0 }, position))
         .with(RotateBeforeMove {rotation_speed: 720f32})
         ;
     }
-    let ogre_position = Vec3::new(0.0, -200.0, 0.0);
-    commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
-        .with(RotateBeforeMove {rotation_speed: 90f32});
+    const OFFSET_POSITION_OGRE: f32 = 100f32;
+    const nb_ogres: u32 = 1;
+    for i in 0..nb_ogres {
+        let ogre_position = Vec3::new((i as f32 - (nb_ogres as f32) / 2f32) * OFFSET_POSITION_OGRE, -200.0, 0.0);
+        commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
+            .with(RotateBeforeMove {rotation_speed: 90f32});
+        ;
+    }
 }
 
 pub fn ai_system(

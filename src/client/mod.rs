@@ -15,6 +15,10 @@ use self::{
     systems::ability::*,
 };
 
+mod custom_stage {
+    pub const PRE_RENDER: &str = "pre_render";
+}
+
 pub struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
@@ -22,6 +26,8 @@ impl Plugin for ClientPlugin {
         app.add_resource(TeamResource {
             team: Team { id: 0 },
         });
+
+        app.add_stage_after(stage::POST_UPDATE, custom_stage::PRE_RENDER);
 
         app.add_startup_system(create_camera.system())
             .add_startup_system(create_render_resource.system())
@@ -45,6 +51,8 @@ impl Plugin for ClientPlugin {
             .add_system(move_order_system.system())
             .add_startup_system(order_system_visual_startup.system())
             .add_system(order_system_visual_init.system())
-            .add_system(order_system_visual.system());
+            .add_system(order_system_visual.system())
+            .add_system_to_stage(custom_stage::PRE_RENDER, no_rotation.system())
+        ;
     }
 }

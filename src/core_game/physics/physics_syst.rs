@@ -20,7 +20,7 @@ pub fn physics_init(
         let rigid_body2 = RigidBodyBuilder::new_dynamic()
             .mass(size.0)
             .translation(transform.translation.x(), transform.translation.y())
-        //    .angular_damping(f32::MAX)
+            .angular_damping(f32::MAX)
         ;
         let collider2 = ColliderBuilder::ball(size.0);
         commands.insert(e, (rigid_body2, collider2));

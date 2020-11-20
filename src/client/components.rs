@@ -15,6 +15,15 @@ pub struct Position {
     pub y: f32,
 }
 
+impl From<&Vec3> for Position {
+    fn from(from: &Vec3) -> Self {
+        Self {
+            x: from.x(),
+            y: from.y(),
+        }
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct SelectionPending {
     pub begin_pos: Position,
@@ -48,3 +57,4 @@ pub struct RenderSpriteVisual {
     pub color: Handle<ColorMaterial>,
     pub material: Handle<ColorMaterial>,
 }
+pub struct NoRotation;

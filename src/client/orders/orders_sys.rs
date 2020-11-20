@@ -4,30 +4,27 @@ use bevy_prototype_lyon::{
     TessellationMode,
 };
 
-use crate::{
-    client::components::*,
-    core_game::components::Attack,
-    core_game::{
+use crate::{client::components::*, core_game::components::Attack, core_game::{
         components::{AIUnit, Health, Team},
         orders::orders_comp::*,
-    },
-};
+    }, client::selection};
 
 use super::orders_comp::*;
 
 pub fn move_order_system(
     cursor_state: Res<MyCursorState>,
     mouse_button: Res<Input<MouseButton>>,
+    key_button: Res<Input<KeyCode>>,
     team: Res<TeamResource>,
     selection: Res<Selection>,
     q_attackables: Query<(Entity, &Transform, &Team, &Health, &Selectable)>,
-    mut query: Query<(&mut Orders, &Selectable, &Team)>,
+    mut query: Query<(&mut Orders, &Selectable, &Team, &Transform)>,
 ) {
     if mouse_button.just_pressed(MouseButton::Right) {
         if let Selection::Hover(Some(selected)) = *selection {
             if let Ok(a_team) = q_attackables.get_component::<Team>(selected) {
                 if a_team.id != team.team.id {
-                    for (mut orders, selectable, b_team) in query.iter_mut() {
+                    for (mut orders, selectable, b_team, _) in query.iter_mut() {
                         if b_team.id != team.team.id {
                             continue;
                         }
@@ -43,21 +40,69 @@ pub fn move_order_system(
             }
         }
 
-        for (mut orders, selectable, b_team) in query.iter_mut() {
+        let mut selected_units = vec![];
+        for (orders, selectable, b_team, transform) in query.iter_mut() {
             if b_team.id != team.team.id {
                 continue;
             }
             if selectable.is_selected {
-                orders.replace_orders(vec![
-                    Order::Ai(AIUnit::Passive),
-                    Orders::order_move(Vec3::new(
-                        cursor_state.world_position.x,
-                        cursor_state.world_position.y,
-                        0f32,
-                    )),
-                    Order::Ai(AIUnit::SeekEnemy),
-                ]);
+                selected_units.push((orders, transform.translation));
             }
+        }
+        if selected_units.len() > 1 {
+            let mut min = Vec3::new(f32::MAX, f32::MAX, 0.0);
+            let mut max = Vec3::new(f32::MIN, f32::MIN, 0.0);
+            for (_, position) in selected_units.iter() {
+                if position.x() < min.x() {
+                    min.set_x(position.x());
+                }
+                if position.y() < min.y() {
+                    min.set_y(position.y());
+                }
+                if position.x() > max.x() {
+                    max.set_x(position.x());
+                }
+                if position.y() > max.y() {
+                    max.set_y(position.y());
+                }
+            }
+            if !selection::helpers::helper_in_rect(&cursor_state.world_position, &Position::from(&min), &Position::from(&max)) {
+                let center: Vec3 = (min + max) / 2.0;
+                for (orders, position) in selected_units.iter_mut() {
+                    let offset = position.clone() - center.clone();
+                    orders.replace_orders(vec![
+                        if key_button.pressed(KeyCode::A) { 
+                            Order::Ai(AIUnit::SeekEnemy)
+                        } else
+                        {
+                            Order::Ai(AIUnit::Passive)
+                        },
+                        Orders::order_move(Vec3::new(
+                            cursor_state.world_position.x,
+                            cursor_state.world_position.y,
+                            0f32,
+                        )+ dbg!(offset)),
+                        Order::Ai(AIUnit::SeekEnemy),
+                    ]);
+                }
+                return;
+            }
+        }
+        for (orders, _) in selected_units.iter_mut() {
+            orders.replace_orders(vec![
+                if key_button.pressed(KeyCode::A) { 
+                    Order::Ai(AIUnit::SeekEnemy)
+                } else
+                {
+                    Order::Ai(AIUnit::Passive)
+                },
+                Orders::order_move(Vec3::new(
+                    cursor_state.world_position.x,
+                    cursor_state.world_position.y,
+                    0f32,
+                )),
+                Order::Ai(AIUnit::SeekEnemy),
+            ]);
         }
     }
 }
@@ -89,9 +134,7 @@ pub fn order_system_visual_init(
                 .unwrap();
             commands.insert_one(
                 entity,
-                DebugOrderMove {
-                    graphic: graphic_entity,
-                },
+                DebugOrderMove,
             );
         }
     }

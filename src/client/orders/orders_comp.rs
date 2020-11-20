@@ -7,9 +7,7 @@ pub struct TeamResource {
 }
 
 #[derive(Clone)]
-pub struct DebugOrderMove {
-    pub(super) graphic: Entity,
-}
+pub struct DebugOrderMove;
 
 #[derive(Clone)]
 pub struct DebugOrderMoveGraphic {

@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy_prototype_lyon::{
-    prelude::{primitive, ShapeType, StrokeOptions},
-    TessellationMode,
-};
+use bevy_prototype_lyon::{TessellationMode, prelude::{FillOptions, ShapeType, StrokeOptions, primitive}};
 
 use super::{super::core_game::components::*, selection::selection_comp::SelectionRectVisual};
 
@@ -36,8 +33,8 @@ pub fn create_render_resource(
 
     let color_selection = materials.add(Color::rgba(1.0, 1.0, 1.0, 0.2).into());
     let team_colors = vec![
-        materials.add(Color::rgba(0.0, 0.0, 1.0, 0.5).into()),
-        materials.add(Color::rgba(1.0, 0.0, 0.0, 0.5).into()),
+        materials.add(Color::rgba(0.0, 0.0, 1.0, 0.8).into()),
+        materials.add(Color::rgba(1.0, 0.0, 0.0, 0.8).into()),
     ];
 
     let render_sprites_resource = RenderResource {
@@ -111,23 +108,33 @@ pub fn adapt_units_for_client(
 ) {
     for (entity, team, render_sprite, size, transform) in query.iter_mut() {
         commands
-            .spawn(primitive(
-                render.team_colors[team.id].clone(),
-                &mut meshes,
-                ShapeType::Circle(size.0),
-                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(3.0)),
-                Vec3::default(),
-            ))
-            .with(Parent(entity));
-        commands.insert(
-            entity,
-            SpriteComponents {
+        .spawn(primitive(
+            render.team_colors[team.id].clone(),
+            &mut meshes,
+            ShapeType::Circle(size.0),
+            TessellationMode::Stroke(&StrokeOptions::default().with_line_width(3.0)),
+            Vec3::default(),
+        ))
+        .with(Parent(entity));
+        commands.spawn(primitive(
+            render.team_colors[team.id].clone(),
+            &mut meshes,
+            ShapeType::Triangle(
+                (size.0, size.0 * 0.5).into(),
+                (size.0 + size.0 * 0.5, 0.0).into(),
+                (size.0, -size.0 * 0.5).into()),
+                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(5.0)),
+            Vec3::new(0.0, 0.0, 0.5),
+        ))
+        .with(Parent(entity));
+
+        commands.spawn(SpriteComponents {
                 material: render.render_sprite_visuals[render_sprite].material.clone(),
                 sprite: Sprite::new(Vec2::new(size.0 * 2.0, size.0 * 2.0)),
-                transform: transform.clone(),
+                transform: Default::default(),
                 ..Default::default()
             },
-        );
+        ).with(Parent(entity)).with(NoRotation);
         commands.insert_one(
             entity,
             Selectable {
@@ -140,12 +147,20 @@ pub fn adapt_units_for_client(
             .spawn(primitive(
                 render.color_selection.clone(),
                 &mut meshes,
-                ShapeType::Circle(size.0 + 3.0),
-                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(3.0)),
+                ShapeType::Circle(size.0 + 2.0),
+                TessellationMode::Stroke(&StrokeOptions::default().with_line_width(2.0)),
                 Vec3::default(),
             ))
             .with(SelectionVisual)
             .with(Parent(entity));
+    }
+}
+
+pub fn no_rotation(
+    mut q: Query<(&mut GlobalTransform, &NoRotation)>,
+) {
+    for (mut gt,  _) in q.iter_mut() {
+        gt.rotation = Default::default();
     }
 }
 
@@ -167,7 +182,7 @@ pub fn mouse_world_position_system(
         // the default orthographic projection is in pixels from the center;
         // just undo the translation
         let p = ev.position - size / 2.0;
-
+        
         // apply the camera transform
         let pos_wld = camera_transform.compute_matrix() * p.extend(0.0).extend(1.0);
         let position = Position {
@@ -253,11 +268,13 @@ pub fn health_visual_setup_system(
         let max_hp_entity = commands
             .spawn(sprites.0)
             .with(Parent(entity))
+            .with(NoRotation)
             .current_entity()
             .unwrap();
         let current_hp_entity = commands
             .spawn(sprites.1)
             .with(Parent(entity))
+            .with(NoRotation)
             .current_entity()
             .unwrap();
         commands.insert_one(
@@ -288,7 +305,7 @@ pub mod ability {
     use bevy::prelude::*;
     use bevy_prototype_lyon::prelude::*;
 
-    use crate::core_game::components::*;
+    use crate::{client::components::NoRotation, core_game::components::*};
 
     pub struct AbilityVisualResource {
         background: Handle<ColorMaterial>,
@@ -359,11 +376,13 @@ pub mod ability {
             let max_hp_entity = commands
                 .spawn(sprites.0)
                 .with(Parent(entity))
+                .with(NoRotation)
                 .current_entity()
                 .unwrap();
             let current_hp_entity = commands
                 .spawn(sprites.1)
                 .with(Parent(entity))
+                .with(NoRotation)
                 .current_entity()
                 .unwrap();
             commands.insert_one(
