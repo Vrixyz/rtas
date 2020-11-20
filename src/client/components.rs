@@ -41,6 +41,11 @@ pub enum Selection {
     Hover(Option<Entity>),
     OnGoing(SelectionPending),
 }
+
+pub struct MainCamera {
+    pub camera_e: Entity,
+}
+
 pub struct MyCursorState {
     pub cursor: EventReader<CursorMoved>,
     // need to identify the main camera

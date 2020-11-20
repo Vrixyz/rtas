@@ -4,16 +4,13 @@ mod components;
 mod orders;
 mod selection;
 mod systems;
+mod camera_pan;
 
 use systems::*;
 
 use crate::core_game::components::Team;
 
-use self::{
-    orders::{orders_comp::TeamResource, orders_sys::*},
-    selection::selection_syst::*,
-    systems::ability::*,
-};
+use self::{camera_pan::CameraPanPlugin, orders::{orders_comp::TeamResource, orders_sys::*}, selection::selection_syst::*, systems::ability::*};
 
 mod custom_stage {
     pub const PRE_RENDER: &str = "pre_render";
@@ -23,6 +20,8 @@ pub struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut AppBuilder) {
+        app.add_plugin(CameraPanPlugin);
+
         app.add_resource(TeamResource {
             team: Team { id: 0 },
         });

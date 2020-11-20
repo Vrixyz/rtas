@@ -1,5 +1,5 @@
 use super::{components::*, orders::orders_comp::*};
-use bevy::{math, prelude::*};
+use bevy::prelude::*;
 
 // Bundles
 #[derive(Bundle)]
@@ -84,19 +84,19 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
 
 pub fn create_units(mut commands: Commands) {
     const OFFSET_POSITION: f32 = 40f32;
-    const nb_goblins: u32 = 5;
-    for i in 0..nb_goblins {
-        let position = Vec3::new((i as f32 - (nb_goblins as f32) / 2f32) * OFFSET_POSITION, 0.0, 0.0);
+    const NB_GOBLINS: u32 = 5;
+    for i in 0..NB_GOBLINS {
+        let position = Vec3::new((i as f32 - (NB_GOBLINS as f32) / 2f32) * OFFSET_POSITION, 0.0, 0.0);
         commands.spawn(create_goblin_unit(Team { id: 0 }, position))
         .with(RotateBeforeMove {rotation_speed: 720f32})
         ;
     }
     const OFFSET_POSITION_OGRE: f32 = 100f32;
-    const nb_ogres: u32 = 1;
-    for i in 0..nb_ogres {
-        let ogre_position = Vec3::new((i as f32 - (nb_ogres as f32) / 2f32) * OFFSET_POSITION_OGRE, -200.0, 0.0);
+    const NB_OGRES: u32 = 1;
+    for i in 0..NB_OGRES {
+        let ogre_position = Vec3::new((i as f32 - (NB_OGRES as f32) / 2f32) * OFFSET_POSITION_OGRE, -200.0, 0.0);
         commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
-            .with(RotateBeforeMove {rotation_speed: 90f32});
+            .with(RotateBeforeMove {rotation_speed: 90f32})
         ;
     }
 }

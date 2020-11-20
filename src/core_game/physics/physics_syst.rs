@@ -1,5 +1,5 @@
-use bevy::{math, prelude::*};
-use bevy_rapier2d::{na::Point2, na::{Translation2, UnitComplex}, physics::{RapierConfiguration, RigidBodyHandleComponent}, rapier::math::Isometry, rapier::{dynamics::IntegrationParameters, dynamics::RigidBody, dynamics::RigidBodyBuilder, dynamics::RigidBodySet, geometry::ColliderBuilder, dynamics::MassProperties, math::Vector}};
+use bevy::prelude::*;
+use bevy_rapier2d::{na::{UnitComplex}, physics::{RapierConfiguration, RigidBodyHandleComponent}, rapier::{dynamics::IntegrationParameters, dynamics::RigidBodyBuilder, dynamics::RigidBodySet, geometry::ColliderBuilder, math::Vector}};
 
 use crate::core_game::{orders::orders_comp::*, components::*};
 
@@ -57,13 +57,12 @@ pub fn mover_update(
         &mut Mover,
         &Speed,
         &mut RigidBodyHandleComponent,
-        &Transform,
         Option<&MeleeAbilityState>,
         Option<&RotateBeforeMove>,
     )>,
-    mut q_target: Query<&Transform>,
+    q_target: Query<&Transform>,
 ) {
-    for (mut mover, speed, body, transform, melee_state, rotate_before_move) in query.iter_mut() {
+    for (mut mover, speed, body, melee_state, rotate_before_move) in query.iter_mut() {
         
         let body = bodies.get_mut(body.handle());
         if body.is_none() {
@@ -77,7 +76,7 @@ pub fn mover_update(
             body.linvel = Vector::new(0.0, 0.0);
             if let Some(rotation) = rotate_before_move {
                 if let Ok(target_position) = q_target.get_component::<Transform>(will_attack.target_entity) {
-                    let mut offset = target_position.translation - position;
+                    let offset = target_position.translation - position;
                     if let Some(new_rotation) = rotate_towards(body.position.rotation, offset, rotation.rotation_speed * time.delta_seconds) {
                         body.position.rotation = new_rotation;
                     }

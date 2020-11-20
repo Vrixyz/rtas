@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy_prototype_lyon::{TessellationMode, prelude::{FillOptions, ShapeType, StrokeOptions, primitive}};
+use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
 
 use super::{super::core_game::components::*, selection::selection_comp::SelectionRectVisual};
 
@@ -48,6 +48,9 @@ pub fn create_render_resource(
 pub fn create_camera(mut commands: Commands) {
     let camera = Camera2dComponents::default();
     let e = commands.spawn(camera).current_entity().unwrap();
+    commands.insert_resource(MainCamera {
+        camera_e: e,
+    });
     commands.insert_resource(MyCursorState {
         cursor: Default::default(),
         camera_e: e,
@@ -104,9 +107,9 @@ pub fn adapt_units_for_client(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     render: Res<RenderResource>,
-    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize, &Transform)>,
+    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize)>,
 ) {
-    for (entity, team, render_sprite, size, transform) in query.iter_mut() {
+    for (entity, team, render_sprite, size) in query.iter_mut() {
         commands
         .spawn(primitive(
             render.team_colors[team.id].clone(),
