@@ -82,5 +82,5 @@ pub enum AIUnit {
 #[derive(Clone, Debug)]
 pub struct Attack {
     pub target: Entity,
-    pub chase_on_motion_buffer_exceeded: bool,
+    pub chase_when_target_too_far: bool,
 }

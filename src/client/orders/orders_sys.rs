@@ -31,7 +31,7 @@ pub fn move_order_system(
                         if selectable.is_selected {
                             orders.replace_orders(vec![Order::Ai(AIUnit::Attack(Attack {
                                 target: selected,
-                                chase_on_motion_buffer_exceeded: true,
+                                chase_when_target_too_far: true,
                             }))]);
                         }
                     }
@@ -81,7 +81,7 @@ pub fn move_order_system(
                             cursor_state.world_position.x,
                             cursor_state.world_position.y,
                             0f32,
-                        )+ dbg!(offset)),
+                        ) + offset),
                         Order::Ai(AIUnit::SeekEnemy),
                     ]);
                 }
@@ -123,15 +123,13 @@ pub fn order_system_visual_init(
 ) {
     for (entity, transform, _, debug_marker) in q_orders.iter() {
         if debug_marker.is_none() {
-            let graphic_entity = commands
+            commands
                 .spawn((
                     transform.clone(),
                     DebugOrderMoveGraphic {
                         entity_to_debug: entity,
                     },
-                ))
-                .current_entity()
-                .unwrap();
+                ));
             commands.insert_one(
                 entity,
                 DebugOrderMove,

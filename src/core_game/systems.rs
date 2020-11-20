@@ -145,15 +145,25 @@ pub fn ai_system(
                     closest_distance = new_distance;
                     new_ai = Some(AIUnit::Attack(Attack {
                         target: b_entity.clone(),
-                        chase_on_motion_buffer_exceeded: false,
+                        chase_when_target_too_far: false,
                     }));
                 }
             }
         }
+        if let Some(new_ai) = new_ai {
+            *ai = new_ai;
+        }
         if let AIUnit::Attack(ai_attacker) = &*ai {
             if let Ok(target_transform) = attackable.get_component::<Transform>(ai_attacker.target.clone()) {
+                if !ai_attacker.chase_when_target_too_far {
+                    let new_distance = (a_position - target_transform.translation).length();
+                    if new_distance > seek_enemy_range.range {
+                        *ai = AIUnit::SeekEnemy;
+                        continue;
+                    }    
+                }
                 if matches!(*melee_state, MeleeAbilityState::MotionBufferExceeded) {
-                    if !ai_attacker.chase_on_motion_buffer_exceeded {
+                    if !ai_attacker.chase_when_target_too_far {
                         *ai = AIUnit::SeekEnemy;
                         continue;
                     }
@@ -180,11 +190,8 @@ pub fn ai_system(
                     )));
                 }
             } else {
-                new_ai = Some(AIUnit::SeekEnemy);
+                *ai = AIUnit::SeekEnemy;
             }
-        }
-        if let Some(new_ai) = new_ai {
-            *ai = new_ai;
         }
     }
 }
