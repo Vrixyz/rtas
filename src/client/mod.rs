@@ -23,7 +23,7 @@ impl Plugin for ClientPlugin {
         app.add_plugin(CameraPanPlugin);
 
         app.add_resource(TeamResource {
-            team: Team { id: 0 },
+            team: Team { id: 2 },
         });
 
         app.add_stage_after(stage::POST_UPDATE, custom_stage::PRE_RENDER);
@@ -34,6 +34,10 @@ impl Plugin for ClientPlugin {
             .add_startup_system_to_stage(
                 startup_stage::POST_STARTUP,
                 adapt_units_for_client.system(),
+            )
+            .add_startup_system_to_stage(
+                startup_stage::POST_STARTUP,
+                adapt_map_for_client.system(),
             )
             .add_system(bevy::input::system::exit_on_esc_system.system())
             .add_system(mouse_world_position_system.system())

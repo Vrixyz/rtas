@@ -29,10 +29,17 @@ pub fn move_order_system(
                             continue;
                         }
                         if selectable.is_selected {
-                            orders.replace_orders(vec![Order::Ai(AIUnit::Attack(Attack {
+                            let mut new_orders = vec![Order::Ai(AIUnit::Attack(Attack {
                                 target: selected,
                                 chase_when_target_too_far: true,
-                            }))]);
+                            }))];
+
+                            if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
+                                orders.add_orders(new_orders);
+                            }
+                            else {
+                                orders.replace_orders(new_orders);
+                            }
                         }
                     }
                     return;
@@ -66,11 +73,12 @@ pub fn move_order_system(
                     max.set_y(position.y());
                 }
             }
+            // Outside magic box
             if !selection::helpers::helper_in_rect(&cursor_state.world_position, &Position::from(&min), &Position::from(&max)) {
                 let center: Vec3 = (min + max) / 2.0;
                 for (orders, position) in selected_units.iter_mut() {
                     let offset = position.clone() - center.clone();
-                    orders.replace_orders(vec![
+                    let new_orders = vec![
                         if key_button.pressed(KeyCode::A) { 
                             Order::Ai(AIUnit::SeekEnemy)
                         } else
@@ -83,13 +91,20 @@ pub fn move_order_system(
                             0f32,
                         ) + offset),
                         Order::Ai(AIUnit::SeekEnemy),
-                    ]);
+                    ];
+                    if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
+                        orders.add_orders(new_orders);
+                    }
+                    else {
+                        orders.replace_orders(new_orders);
+                    }
                 }
                 return;
             }
         }
+        // Inside magic box
         for (orders, _) in selected_units.iter_mut() {
-            orders.replace_orders(vec![
+            let new_orders = vec![
                 if key_button.pressed(KeyCode::A) { 
                     Order::Ai(AIUnit::SeekEnemy)
                 } else
@@ -102,7 +117,13 @@ pub fn move_order_system(
                     0f32,
                 )),
                 Order::Ai(AIUnit::SeekEnemy),
-            ]);
+            ];
+            if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
+                orders.add_orders(new_orders);
+            }
+            else {
+                orders.replace_orders(new_orders);
+            }
         }
     }
 }
@@ -190,6 +211,15 @@ pub fn order_system_visual(
         }
         orders.get_orders().iter().for_each(|o| {
             if let Order::Move(Awaitable::Awaiting(mover)) = o {
+                waypoints.push(
+                    (
+                        mover.get_target_position().x(),
+                        mover.get_target_position().y(),
+                    )
+                        .into(),
+                );
+            }
+            if let Order::Move(Awaitable::Queued(mover)) = o {
                 waypoints.push(
                     (
                         mover.get_target_position().x(),

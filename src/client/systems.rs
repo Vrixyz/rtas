@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy_prototype_lyon::{TessellationMode, prelude::{ShapeType, StrokeOptions, primitive}};
+use bevy_prototype_lyon::{TessellationMode, prelude::{FillOptions, ShapeType, StrokeOptions, primitive}};
+
+use crate::core_game::map::{Wall, WallSize};
 
 use super::{super::core_game::components::*, selection::selection_comp::SelectionRectVisual};
 
@@ -14,7 +16,6 @@ pub fn create_render_resource(
 ) {
     let texture_goblin = asset_server.load("units/goblin.png");
 
-    let texture_ogre = asset_server.load("units/ogre.png");
     let mut render_sprite_visuals = HashMap::new();
     render_sprite_visuals.insert(
         RenderSprite::Goblin,
@@ -23,6 +24,7 @@ pub fn create_render_resource(
             material: materials.add(texture_goblin.into()),
         },
     );
+    let texture_ogre = asset_server.load("units/ogre.png");
     render_sprite_visuals.insert(
         RenderSprite::Ogre,
         RenderSpriteVisual {
@@ -30,17 +32,28 @@ pub fn create_render_resource(
             material: materials.add(texture_ogre.into()),
         },
     );
+    let texture_bandit = asset_server.load("units/bandit.png");
+    render_sprite_visuals.insert(
+        RenderSprite::Bandit,
+        RenderSpriteVisual {
+            color: materials.add(Color::rgb(0.6, 0.6, 0.6).into()),
+            material: materials.add(texture_bandit.into()),
+        },
+    );
 
     let color_selection = materials.add(Color::rgba(1.0, 1.0, 1.0, 0.2).into());
     let team_colors = vec![
         materials.add(Color::rgba(0.0, 0.0, 1.0, 0.8).into()),
+        materials.add(Color::rgba(0.6, 0.6, 0.6, 0.8).into()),
         materials.add(Color::rgba(1.0, 0.0, 0.0, 0.8).into()),
     ];
+    let color_walls = materials.add(Color::rgba(1.0, 1.0, 1.0, 1.0).into());
 
     let render_sprites_resource = RenderResource {
         render_sprite_visuals,
         color_selection,
         team_colors,
+        color_walls,
     };
     commands.insert_resource(render_sprites_resource);
 }
@@ -53,6 +66,7 @@ pub fn create_camera(mut commands: Commands) {
     });
     commands.insert_resource(MyCursorState {
         cursor: Default::default(),
+        mouse_wheel: Default::default(),
         camera_e: e,
         world_position: Position { x: 0f32, y: 0f32 },
         ui_position: Vec2::default(),
@@ -103,13 +117,33 @@ pub fn create_ui(mut commands: Commands, mut materials: ResMut<Assets<ColorMater
     }
 }
 
+pub fn adapt_map_for_client(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    render: Res<RenderResource>,
+    query: Query<(Entity, &Wall, &WallSize)>,
+)
+{
+    for (entity, _, size) in query.iter() {
+        commands
+        .spawn(primitive(
+            render.color_walls.clone(),
+            &mut meshes,
+            ShapeType::Rectangle {width: size.x*2.0, height: size.y*2.0},
+            TessellationMode::Fill(&FillOptions::default()),
+            Vec3::new(-size.x, -size.y, 1f32),
+        ))
+        .with(Parent(entity));
+    }
+}
+
 pub fn adapt_units_for_client(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     render: Res<RenderResource>,
-    mut query: Query<(Entity, &Team, &RenderSprite, &UnitSize)>,
+    query: Query<(Entity, &Team, &RenderSprite, &UnitSize)>,
 ) {
-    for (entity, team, render_sprite, size) in query.iter_mut() {
+    for (entity, team, render_sprite, size) in query.iter() {
         commands
         .spawn(primitive(
             render.team_colors[team.id].clone(),

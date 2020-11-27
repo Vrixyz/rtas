@@ -90,7 +90,7 @@ pub fn mover_update(
         let target = mover.get_target_position();
         let mut offset = *target - position;
         let offset_distance = offset.length();
-        if offset_distance < 0.02 {
+        if offset_distance < 2.0 {
             mover.is_target_reached = true;
             body.linvel = Default::default();
             continue;

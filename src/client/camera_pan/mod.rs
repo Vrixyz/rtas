@@ -14,13 +14,14 @@ impl Plugin for CameraPanPlugin {
             ..Default::default()
         });
         app
-            .add_system(systems::camera_pan.system())
+        .add_system(systems::camera_pan.system())
+        .add_system(systems::camera_zoom.system())
         ;
     }
 }
 
 mod systems {
-    use bevy::{ecs::Query, ecs::{Res, ResMut}, input::Input, ecs::Mutated, math::Vec3, prelude::MouseButton, prelude::Transform};
+    use bevy::{ecs::Query, ecs::{Res, ResMut}, ecs::{Commands, Mutated}, input::Input, input::mouse::MouseWheel, math::Vec3, prelude::Events, prelude::MouseButton, prelude::Transform, render::camera::CameraProjection, render::camera::OrthographicProjection};
 
     use crate::client::components::{MainCamera, MyCursorState};
 
@@ -43,6 +44,21 @@ mod systems {
         }
         else if camera_pan.last_click_position.is_some() {
             camera_pan.last_click_position = None;
+        }
+    }
+    pub fn camera_zoom(
+        mut commands: Commands,
+        mut camera_pan: ResMut<CameraPan>,
+        main_camera: Res<MainCamera>,
+        mut my_cursor_state: ResMut<MyCursorState>,
+        ev_wheel: Res<Events<MouseWheel>>,
+        mut query: Query<&mut Transform>,
+    ) {
+        if let Some(ev) = &my_cursor_state.mouse_wheel.latest(&ev_wheel) {
+                // FIXME: Scale is very ugly: zooming out messes up with cursor movement, and we can't zoom in.
+                let mut transform = query.get_component_mut::<Transform>(main_camera.camera_e).unwrap();
+                let offset = ev.y * -0.01f32;
+                transform.scale = transform.scale + Vec3::one() * offset;
         }
     }
 }

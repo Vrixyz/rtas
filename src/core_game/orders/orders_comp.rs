@@ -51,8 +51,8 @@ pub struct Orders {
     pub override_order: Option<Order>,
 }
 impl Orders {
-    pub fn add_order(&mut self, new_order: Order) {
-        self.orders.push(new_order);
+    pub fn add_orders(&mut self, mut new_orders: Vec<Order>) {
+        self.orders.append(&mut new_orders);
     }
     pub fn replace_orders(&mut self, new_orders: Vec<Order>) {
         self.orders = new_orders;

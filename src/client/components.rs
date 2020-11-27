@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::super::core_game::components::*;
-use bevy::prelude::*;
+use bevy::{input::mouse::MouseWheel, prelude::*};
 
 pub struct Selectable {
     pub is_selected: bool,
@@ -48,6 +48,7 @@ pub struct MainCamera {
 
 pub struct MyCursorState {
     pub cursor: EventReader<CursorMoved>,
+    pub mouse_wheel: EventReader<MouseWheel>,
     // need to identify the main camera
     pub camera_e: Entity,
     pub world_position: Position,
@@ -56,6 +57,7 @@ pub struct MyCursorState {
 pub struct RenderResource {
     pub render_sprite_visuals: HashMap<RenderSprite, RenderSpriteVisual>,
     pub color_selection: Handle<ColorMaterial>,
+    pub color_walls: Handle<ColorMaterial>,
     pub team_colors: Vec<Handle<ColorMaterial>>,
 }
 pub struct RenderSpriteVisual {

@@ -2315,6 +2315,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mapgen"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a29cb7c20b4d48ea3bb655b201f6a87268b070853e78b14615d0fbf817413523"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3109,6 +3118,8 @@ dependencies = [
  "bevy",
  "bevy_prototype_lyon",
  "bevy_rapier2d",
+ "mapgen",
+ "rand",
 ]
 
 [[package]]

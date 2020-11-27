@@ -1,4 +1,4 @@
-use super::{components::*, orders::orders_comp::*};
+use super::{map::Map, components::*, orders::orders_comp::*};
 use bevy::prelude::*;
 
 // Bundles
@@ -11,6 +11,7 @@ pub struct UnitBundle {
 
     // should be added after (for all units having "Speed")
     mover: Mover,
+    rotate_before_move: RotateBeforeMove,
     speed: Speed,
     team: Team,
     ai_unit: AIUnit,
@@ -25,7 +26,34 @@ pub struct UnitBundle {
     // should be added after (for all units having "Mover")
     orders: Orders,
 }
-
+pub fn create_bandit_unit(team: Team, position: Vec3) -> UnitBundle {
+    UnitBundle {
+        size: UnitSize(20f32),
+        transform: Transform::from_translation(position),
+        global_transform: GlobalTransform::from_translation(position),
+        render_sprite: RenderSprite::Bandit,
+        mover: Mover::new(position),
+        rotate_before_move: RotateBeforeMove {rotation_speed: 700f32},
+        speed: Speed { speed: 80f32 },
+        team,
+        ai_unit: AIUnit::SeekEnemy,
+        seek_enemy_range: SeekEnemyRange { range: 200f32 },
+        melee_ability: MeleeAbility {
+            range: 100f32,
+            motion_buffer_range: 3f32,
+            time_to_strike: 0.4f32,
+            cooldown: 0.2f32,
+        },
+        offensive_stats: OffensiveStats { power: 4f32 },
+        melee_ability_state: MeleeAbilityState::Ready,
+        health: Health {
+            max_hp: 10f32,
+            current_hp: 10f32,
+        },
+        suffer_damage: SufferDamage::default(),
+        orders: Orders::default(),
+    }
+}
 pub fn create_goblin_unit(team: Team, position: Vec3) -> UnitBundle {
     UnitBundle {
         size: UnitSize(20f32),
@@ -33,10 +61,11 @@ pub fn create_goblin_unit(team: Team, position: Vec3) -> UnitBundle {
         global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Goblin,
         mover: Mover::new(position),
+        rotate_before_move: RotateBeforeMove {rotation_speed: 720f32},
         speed: Speed { speed: 120f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
-        seek_enemy_range: SeekEnemyRange { range: 100f32 },
+        seek_enemy_range: SeekEnemyRange { range: 200f32 },
         melee_ability: MeleeAbility {
             range: 5f32,
             motion_buffer_range: 3f32,
@@ -60,11 +89,12 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
         global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Ogre,
         mover: Mover::new(position),
+        rotate_before_move: RotateBeforeMove {rotation_speed: 90f32},
         speed: Speed { speed: 30f32,
         },
         team,
         ai_unit: AIUnit::SeekEnemy,
-        seek_enemy_range: SeekEnemyRange { range: 150f32 },
+        seek_enemy_range: SeekEnemyRange { range: 200f32 },
         melee_ability: MeleeAbility {
             range: 10f32,
             motion_buffer_range: 3f32,
@@ -82,21 +112,32 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
     }
 }
 
-pub fn create_units(mut commands: Commands) {
+pub fn create_units(mut commands: Commands,
+    map: Res<Map>,
+) {
     const OFFSET_POSITION: f32 = 40f32;
     const NB_GOBLINS: u32 = 5;
+    const NB_BANDITS: u32 = 5;
     for i in 0..NB_GOBLINS {
         let position = Vec3::new((i as f32 - (NB_GOBLINS as f32) / 2f32) * OFFSET_POSITION, 0.0, 0.0);
         commands.spawn(create_goblin_unit(Team { id: 0 }, position))
-        .with(RotateBeforeMove {rotation_speed: 720f32})
         ;
+    }
+    if let Some(start) = map.map.starting_point {
+        let real_start = Map::real_position_at(start.x, start.y);
+        for i in 0..NB_BANDITS {
+
+            let position = Vec3::new((i as f32 - (NB_BANDITS as f32) / 2f32) * OFFSET_POSITION + real_start.x(), real_start.y(), 0.0);
+            
+            commands.spawn(create_bandit_unit(Team { id: 2 }, position))
+            ;
+        }
     }
     const OFFSET_POSITION_OGRE: f32 = 100f32;
     const NB_OGRES: u32 = 1;
     for i in 0..NB_OGRES {
-        let ogre_position = Vec3::new((i as f32 - (NB_OGRES as f32) / 2f32) * OFFSET_POSITION_OGRE, -200.0, 0.0);
+        let ogre_position = Vec3::new((i as f32 - (NB_OGRES as f32) / 2f32) * OFFSET_POSITION_OGRE, -300.0, 0.0);
         commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
-            .with(RotateBeforeMove {rotation_speed: 90f32})
         ;
     }
 }

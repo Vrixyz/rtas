@@ -6,6 +6,7 @@ pub struct UnitSize(pub f32);
 pub enum RenderSprite {
     Ogre,
     Goblin,
+    Bandit,
 }
 
 pub struct OffensiveStats {
