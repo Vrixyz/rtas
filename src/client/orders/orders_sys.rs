@@ -4,10 +4,7 @@ use bevy_prototype_lyon::{
     TessellationMode,
 };
 
-use crate::{client::components::*, core_game::components::Attack, core_game::{
-        components::{AIUnit, Health, Team},
-        orders::orders_comp::*,
-    }, client::selection};
+use crate::{client::components::*, client::selection, core_game::components::Attack, core_game::{components::{AIUnit, Health, Team}, orders::orders_comp::*, pathfinding::pathfinding_comp::Map}};
 
 use super::orders_comp::*;
 
@@ -17,6 +14,7 @@ pub fn move_order_system(
     key_button: Res<Input<KeyCode>>,
     team: Res<TeamResource>,
     selection: Res<Selection>,
+    map: Res<Map>,
     q_attackables: Query<(Entity, &Transform, &Team, &Health, &Selectable)>,
     mut query: Query<(&mut Orders, &Selectable, &Team, &Transform)>,
 ) {
@@ -78,20 +76,43 @@ pub fn move_order_system(
                 let center: Vec3 = (min + max) / 2.0;
                 for (orders, position) in selected_units.iter_mut() {
                     let offset = position.clone() - center.clone();
-                    let new_orders = vec![
+                    let target = Vec3::new(
+                        cursor_state.world_position.x,
+                        cursor_state.world_position.y,
+                        0f32,
+                    ) + offset;
+                    let mut new_orders = vec![
                         if key_button.pressed(KeyCode::A) { 
                             Order::Ai(AIUnit::SeekEnemy)
                         } else
                         {
                             Order::Ai(AIUnit::Passive)
-                        },
-                        Orders::order_move(Vec3::new(
-                            cursor_state.world_position.x,
-                            cursor_state.world_position.y,
-                            0f32,
-                        ) + offset),
+                        }];
+                    if map.is_ready() {
+                        let start_map = (crate::core_game::map::Map::map_x_at(position.x()) as i32, crate::core_game::map::Map::map_y_at(position.y()) as i32);
+                        let target_map = (crate::core_game::map::Map::map_x_at(target.x()) as i32, crate::core_game::map::Map::map_y_at(target.y()) as i32);
+                        if let Ok(path) = map.dijkstra(start_map, target_map) {
+                            let mut real_path = path.into_iter().map(|pos| {
+                                let real_pos = crate::core_game::map::Map::real_position_at(pos.0 as usize, pos.1 as usize);
+                                Orders::order_move(Vec3::new(
+                                    // TODO: convert to real
+                                    real_pos.x(),
+                                    real_pos.y(),
+                                    0f32
+                                ))
+                            }).collect::<Vec<Order>>();
+                            new_orders.append(&mut real_path);
+                        }
+                        else {
+                            new_orders.push(Orders::order_move(target))
+                        }        
+                    }
+                    else {
+                        new_orders.push(Orders::order_move(target))
+                    }
+                    new_orders.push(
                         Order::Ai(AIUnit::SeekEnemy),
-                    ];
+                    );
                     if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
                         orders.add_orders(new_orders);
                     }

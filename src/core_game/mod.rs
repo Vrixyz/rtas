@@ -1,9 +1,11 @@
 use bevy::{prelude::*, app::startup_stage};
+use pathfinding::PathfindingPlugin;
 
 pub mod map;
 pub mod components;
 pub mod orders;
 pub mod physics;
+pub mod pathfinding;
 mod systems;
 
 use self::{map::create_map, orders::orders_sys::*};
@@ -15,6 +17,7 @@ impl Plugin for CorePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
         .add_plugin(physics::PhysicsPlugin)
+        .add_plugin(PathfindingPlugin)
         .add_startup_system_to_stage(startup_stage::PRE_STARTUP, create_map.system())
         .add_startup_system_to_stage(startup_stage::STARTUP, create_units.system())
         .add_system(order_system.system())

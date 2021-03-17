@@ -38,7 +38,6 @@ pub fn order_system(
 // OK means order was fully executed, Err means order is still ongoing.
 type ExecutionResult = Result<(), Option<Order>>;
 
-/// Returns true if order is fully executed
 fn execute_order(
     order: &Order,
     mover: &mut Mut<Mover>,

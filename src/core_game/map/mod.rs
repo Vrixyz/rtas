@@ -1,10 +1,12 @@
-use bevy::{ecs::Commands, math::Vec3, prelude::GlobalTransform, prelude::Transform, math::Vec2};
-use bevy_rapier2d::rapier::{geometry::ColliderBuilder, dynamics::RigidBodyBuilder};
+use bevy::{ecs::Commands, math::Vec2, math::Vec3, prelude::GlobalTransform, prelude::Transform};
+use bevy_rapier2d::rapier::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder};
 
-use rand::prelude::*;
-use mapgen::{AreaStartingPosition, CullUnreachable, DistantExit, MapBuilder, NoiseGenerator, geometry::Rect, TileType, XStart, YStart};
 use mapgen::filter;
-
+use mapgen::{
+    geometry::Rect, AreaStartingPosition, CullUnreachable, DistantExit, MapBuilder, NoiseGenerator,
+    TileType, XStart, YStart,
+};
+use rand::prelude::*;
 
 pub struct Wall;
 pub struct WallSize {
@@ -19,30 +21,51 @@ pub struct Map {
 const TILE_SIZE: f32 = 120f32;
 const HALF_TILE: f32 = TILE_SIZE / 2f32;
 const MAP_SIZE: (usize, usize) = (20, 20);
+const offset_x: f32 = MAP_SIZE.0 as f32 * HALF_TILE;
+const offset_y: f32 = MAP_SIZE.0 as f32 * HALF_TILE;
 
 impl Map {
-    pub fn real_position_at(x: usize, y: usize) -> Vec2 {
-        let offset_x = MAP_SIZE.0 as f32 * HALF_TILE;
-        let offset_y = MAP_SIZE.1 as f32 * HALF_TILE;
-
+    pub fn real_x_at(x: usize) -> f32 {
         let position_x = x as f32 * TILE_SIZE - offset_x;
+        position_x
+    }
+    pub fn real_y_at(y: usize) -> f32 {
         let position_y = y as f32 * TILE_SIZE - offset_y;
+        position_y
+    }
 
-        Vec2::new(position_x, position_y)
+    pub fn real_position_at(x: usize, y: usize) -> Vec2 {
+        Vec2::new(Self::real_x_at(x), Self::real_y_at(y))
+    }
+
+    pub fn map_x_at(x: f32) -> usize {
+        let position_x = (x + offset_x) / (TILE_SIZE as f32);
+        position_x.round() as usize
+    }
+    pub fn map_y_at(y: f32) -> usize {
+        let position_y = (y + offset_y) / (TILE_SIZE as f32);
+        position_y.round() as usize
     }
 }
 
 fn spawn_wall_at(commands: &mut Commands, position: Vec3, size: f32) {
     let size = Vec2::new(size, size);
-    let rigid_body2 = RigidBodyBuilder::new_static()
-        .translation(position.x(), position.y())
-    ;
+    let rigid_body2 = RigidBodyBuilder::new_static().translation(position.x(), position.y());
     let collider2 = ColliderBuilder::cuboid(size.x(), size.y());
-    commands.spawn((rigid_body2, collider2, Wall, WallSize {x: size.x(), y: size.y()}, Transform::from_translation(position), GlobalTransform::from_translation(position)));
+    commands.spawn((
+        rigid_body2,
+        collider2,
+        Wall,
+        WallSize {
+            x: size.x(),
+            y: size.y(),
+        },
+        Transform::from_translation(position),
+        GlobalTransform::from_translation(position),
+    ));
 }
 
 pub fn create_map(mut commands: Commands) {
-
     let mut rng = StdRng::seed_from_u64(100);
     let mut map = MapBuilder::new(MAP_SIZE.0, MAP_SIZE.1)
         .with(NoiseGenerator::uniform())
@@ -56,46 +79,23 @@ pub fn create_map(mut commands: Commands) {
         let new_room = Rect::new(starting_point.x, starting_point.y, 3, 3);
         map.add_room(new_room);
         println!("Start: {:#?}", starting_point);
-    }
-    else {
+    } else {
         println!("no start..");
     }
     if let Some(exit_point) = map.exit_point {
         let new_room = Rect::new(exit_point.x, exit_point.y, 3, 3);
         //map.add_room(new_room);
         println!("Exit: {:#?}", exit_point);
-    }
-    else {
+    } else {
         println!("no exit..");
     }
-    /*
-    let offset_x = (MAP_SIZE.0) as f32 * HALF_TILE;
-    let offset_y = (MAP_SIZE.1) as f32 * HALF_TILE;
-
-    for y in 0..MAP_SIZE.1 as i64 {
-        let position_y = y as f32 * TILE_SIZE - offset_y;
-        spawn_wall_at(&mut commands, Vec3::new(-offset_x - TILE_SIZE, position_y as f32, 0.0), HALF_TILE);
-        spawn_wall_at(&mut commands, Vec3::new(offset_x, position_y as f32, 0.0), HALF_TILE);
-    }
-    for x in 0..MAP_SIZE.0 {
-        let position_x = x as f32 * TILE_SIZE - offset_x;
-        spawn_wall_at(&mut commands, Vec3::new(position_x, -offset_y - TILE_SIZE, 0.0), HALF_TILE);
-        spawn_wall_at(&mut commands, Vec3::new(position_x, offset_y, 0.0), HALF_TILE);
-    }
-    spawn_wall_at(&mut commands, Vec3::new(-offset_x - TILE_SIZE, -offset_y - TILE_SIZE, 0.0), HALF_TILE);
-    spawn_wall_at(&mut commands, Vec3::new(-offset_x - TILE_SIZE, offset_y, 0.0), HALF_TILE);
-    spawn_wall_at(&mut commands, Vec3::new(offset_x, -offset_y - TILE_SIZE, 0.0), HALF_TILE);
-    spawn_wall_at(&mut commands, Vec3::new(offset_x, offset_y, 0.0), HALF_TILE);
-    */
-    let offset_x = MAP_SIZE.0 as f32 * HALF_TILE;
-    let offset_y = MAP_SIZE.1 as f32 * HALF_TILE;
 
     for y in (0..MAP_SIZE.1).rev() {
         let position_y = y as f32 * TILE_SIZE - offset_y;
         for x in 0..MAP_SIZE.0 {
             let position_x = x as f32 * TILE_SIZE - offset_x;
             let tile_type = map.at(x, y);
-            
+
             if tile_type == TileType::Floor {
                 if let Some(start) = map.starting_point {
                     if start.x == x && start.y == y {
@@ -112,10 +112,14 @@ pub fn create_map(mut commands: Commands) {
                 print!(" ");
                 continue;
             }
-            spawn_wall_at(&mut commands, Vec3::new(position_x, position_y, 0.0), HALF_TILE);
+            spawn_wall_at(
+                &mut commands,
+                Vec3::new(position_x, position_y, 0.0),
+                HALF_TILE,
+            );
             print!("X");
         }
         println!();
     }
-    commands.insert_resource(Map {map});
+    commands.insert_resource(Map { map });
 }
