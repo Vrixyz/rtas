@@ -1,16 +1,17 @@
 use crate::core_game::components::*;
-use bevy::math::Vec3;
+use bevy::{math::Vec3, prelude::Component};
 
 // Hide mover to avoid doing bad things, because only
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct Mover {
     pub(super) target_position: Vec3,
     pub is_target_reached: bool,
 }
+#[derive(Component)]
 pub struct RotateBeforeMove {
     pub rotation_speed: f32,
 }
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct Speed {
     pub speed: f32,
 }
@@ -45,7 +46,7 @@ pub enum Awaitable<T> {
     Awaiting(T),
 }
 
-#[derive(Default, Debug)]
+#[derive(Component, Default, Debug)]
 pub struct Orders {
     pub(super) orders: Vec<Order>,
     pub override_order: Option<Order>,

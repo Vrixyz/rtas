@@ -7,7 +7,7 @@ use client::ClientPlugin;
 use core_game::CorePlugin;
 
 fn main() {
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(ClientPlugin)
         .add_plugin(CorePlugin)

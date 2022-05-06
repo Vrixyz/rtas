@@ -1,14 +1,19 @@
-use bevy::{ecs::Commands, math::Vec2, math::Vec3, prelude::GlobalTransform, prelude::Transform};
-use bevy_rapier2d::rapier::{dynamics::RigidBodyBuilder, geometry::ColliderBuilder};
+use bevy::{math::Vec2, prelude::*};
 
+use bevy_rapier2d::na::Isometry2;
+
+use bevy_rapier2d::prelude::Collider;
 use mapgen::filter;
 use mapgen::{
     geometry::Rect, AreaStartingPosition, CullUnreachable, DistantExit, MapBuilder, NoiseGenerator,
-    TileType, XStart, YStart,
+    XStart, YStart,
 };
 use rand::prelude::*;
 
+#[derive(Component)]
 pub struct Wall;
+
+#[derive(Component)]
 pub struct WallSize {
     pub x: f32,
     pub y: f32,
@@ -50,19 +55,19 @@ impl Map {
 
 fn spawn_wall_at(commands: &mut Commands, position: Vec3, size: f32) {
     let size = Vec2::new(size, size);
-    let rigid_body2 = RigidBodyBuilder::new_static().translation(position.x(), position.y());
-    let collider2 = ColliderBuilder::cuboid(size.x(), size.y());
-    commands.spawn((
-        rigid_body2,
-        collider2,
-        Wall,
-        WallSize {
-            x: size.x(),
-            y: size.y(),
-        },
-        Transform::from_translation(position),
-        GlobalTransform::from_translation(position),
-    ));
+    let collider = Collider::cuboid(size.x, size.y);
+
+    commands
+        .spawn_bundle((
+            Wall,
+            WallSize {
+                x: size.x,
+                y: size.y,
+            },
+            Transform::from_translation(position),
+            GlobalTransform::from_translation(position),
+        ))
+        .insert(collider);
 }
 
 pub fn create_map(mut commands: Commands) {
@@ -96,7 +101,7 @@ pub fn create_map(mut commands: Commands) {
             let position_x = x as f32 * TILE_SIZE - offset_x;
             let tile_type = map.at(x, y);
 
-            if tile_type == TileType::Floor {
+            if tile_type.is_walkable() {
                 if let Some(start) = map.starting_point {
                     if start.x == x && start.y == y {
                         print!("S");

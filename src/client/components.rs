@@ -3,13 +3,16 @@ use std::collections::HashMap;
 use super::super::core_game::components::*;
 use bevy::{input::mouse::MouseWheel, prelude::*};
 
+#[derive(Component)]
 pub struct Selectable {
     pub is_selected: bool,
     pub half_size: f32,
 }
+
+#[derive(Component)]
 pub struct SelectionVisual;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Component, PartialEq, Clone, Debug)]
 pub struct Position {
     pub x: f32,
     pub y: f32,
@@ -18,8 +21,8 @@ pub struct Position {
 impl From<&Vec3> for Position {
     fn from(from: &Vec3) -> Self {
         Self {
-            x: from.x(),
-            y: from.y(),
+            x: from.x,
+            y: from.y,
         }
     }
 }
@@ -42,13 +45,22 @@ pub enum Selection {
     OnGoing(SelectionPending),
 }
 
+#[derive(Component)]
 pub struct MainCamera {
     pub camera_e: Entity,
 }
 
+#[derive(Component)]
+pub struct RenderSpriteVisual {
+    pub color: Color,
+    pub image: Handle<Image>,
+}
+
+#[derive(Component)]
+pub struct NoRotation;
+
 pub struct MyCursorState {
-    pub cursor: EventReader<CursorMoved>,
-    pub mouse_wheel: EventReader<MouseWheel>,
+    pub mouse_wheel: Vec<MouseWheel>,
     // need to identify the main camera
     pub camera_e: Entity,
     pub world_position: Position,
@@ -56,12 +68,7 @@ pub struct MyCursorState {
 }
 pub struct RenderResource {
     pub render_sprite_visuals: HashMap<RenderSprite, RenderSpriteVisual>,
-    pub color_selection: Handle<ColorMaterial>,
-    pub color_walls: Handle<ColorMaterial>,
-    pub team_colors: Vec<Handle<ColorMaterial>>,
+    pub color_selection: Color,
+    pub color_walls: Color,
+    pub team_colors: Vec<Color>,
 }
-pub struct RenderSpriteVisual {
-    pub color: Handle<ColorMaterial>,
-    pub material: Handle<ColorMaterial>,
-}
-pub struct NoRotation;

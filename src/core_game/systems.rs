@@ -1,4 +1,4 @@
-use super::{map::Map, components::*, orders::orders_comp::*};
+use super::{components::*, map::Map, orders::orders_comp::*};
 use bevy::prelude::*;
 
 // Bundles
@@ -33,7 +33,9 @@ pub fn create_bandit_unit(team: Team, position: Vec3) -> UnitBundle {
         global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Bandit,
         mover: Mover::new(position),
-        rotate_before_move: RotateBeforeMove {rotation_speed: 700f32},
+        rotate_before_move: RotateBeforeMove {
+            rotation_speed: 700f32,
+        },
         speed: Speed { speed: 80f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
@@ -61,7 +63,9 @@ pub fn create_goblin_unit(team: Team, position: Vec3) -> UnitBundle {
         global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Goblin,
         mover: Mover::new(position),
-        rotate_before_move: RotateBeforeMove {rotation_speed: 720f32},
+        rotate_before_move: RotateBeforeMove {
+            rotation_speed: 720f32,
+        },
         speed: Speed { speed: 120f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
@@ -89,9 +93,10 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
         global_transform: GlobalTransform::from_translation(position),
         render_sprite: RenderSprite::Ogre,
         mover: Mover::new(position),
-        rotate_before_move: RotateBeforeMove {rotation_speed: 90f32},
-        speed: Speed { speed: 30f32,
+        rotate_before_move: RotateBeforeMove {
+            rotation_speed: 90f32,
         },
+        speed: Speed { speed: 30f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
         seek_enemy_range: SeekEnemyRange { range: 200f32 },
@@ -112,33 +117,45 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
     }
 }
 
-pub fn create_units(mut commands: Commands,
-    map: Res<Map>,
-) {
+pub fn create_units(mut commands: Commands, map: Res<Map>) {
     const OFFSET_POSITION: f32 = 40f32;
     const NB_GOBLINS: u32 = 5;
     const NB_BANDITS: u32 = 5;
     for i in 0..NB_GOBLINS {
-        let position = Vec3::new((i as f32 - (NB_GOBLINS as f32) / 2f32) * OFFSET_POSITION, 0.0, 0.0);
-        commands.spawn(create_goblin_unit(Team { id: 0 }, position))
-        ;
+        let position = Vec3::new(
+            (i as f32 - (NB_GOBLINS as f32) / 2f32) * OFFSET_POSITION,
+            0.0,
+            0.0,
+        );
+        commands
+            .spawn()
+            .insert_bundle(create_goblin_unit(Team { id: 0 }, position));
     }
     if let Some(start) = map.map.starting_point {
         let real_start = Map::real_position_at(start.x, start.y);
         for i in 0..NB_BANDITS {
+            let position = Vec3::new(
+                (i as f32 - (NB_BANDITS as f32) / 2f32) * OFFSET_POSITION + real_start.x,
+                real_start.y,
+                0.0,
+            );
 
-            let position = Vec3::new((i as f32 - (NB_BANDITS as f32) / 2f32) * OFFSET_POSITION + real_start.x(), real_start.y(), 0.0);
-            
-            commands.spawn(create_bandit_unit(Team { id: 2 }, position))
-            ;
+            commands
+                .spawn()
+                .insert_bundle(create_bandit_unit(Team { id: 2 }, position));
         }
     }
     const OFFSET_POSITION_OGRE: f32 = 100f32;
     const NB_OGRES: u32 = 1;
     for i in 0..NB_OGRES {
-        let ogre_position = Vec3::new((i as f32 - (NB_OGRES as f32) / 2f32) * OFFSET_POSITION_OGRE, -300.0, 0.0);
-        commands.spawn(create_ogre_unit(Team { id: 1 }, ogre_position))
-        ;
+        let ogre_position = Vec3::new(
+            (i as f32 - (NB_OGRES as f32) / 2f32) * OFFSET_POSITION_OGRE,
+            -300.0,
+            0.0,
+        );
+        commands
+            .spawn()
+            .insert_bundle(create_ogre_unit(Team { id: 1 }, ogre_position));
     }
 }
 
@@ -195,13 +212,15 @@ pub fn ai_system(
             *ai = new_ai;
         }
         if let AIUnit::Attack(ai_attacker) = &*ai {
-            if let Ok(target_transform) = attackable.get_component::<Transform>(ai_attacker.target.clone()) {
+            if let Ok(target_transform) =
+                attackable.get_component::<Transform>(ai_attacker.target.clone())
+            {
                 if !ai_attacker.chase_when_target_too_far {
                     let new_distance = (a_position - target_transform.translation).length();
                     if new_distance > seek_enemy_range.range {
                         *ai = AIUnit::SeekEnemy;
                         continue;
-                    }    
+                    }
                 }
                 if matches!(*melee_state, MeleeAbilityState::MotionBufferExceeded) {
                     if !ai_attacker.chase_when_target_too_far {
@@ -209,7 +228,9 @@ pub fn ai_system(
                         continue;
                     }
                 }
-                let size = attackable.get_component::<UnitSize>(ai_attacker.target).unwrap();
+                let size = attackable
+                    .get_component::<UnitSize>(ai_attacker.target)
+                    .unwrap();
                 if (target_transform.translation - a_position).length()
                     < melee_ability.range + size.0 + a_size.0
                 {
@@ -253,14 +274,17 @@ pub fn attack_melee_system(
         match &*state {
             MeleeAbilityState::Ready => {}
             MeleeAbilityState::WillAttack(attack_state) => {
-                if let Ok(a_transform) = q_victim.get_component::<Transform>(attack_state.target_entity) {
+                if let Ok(a_transform) =
+                    q_victim.get_component::<Transform>(attack_state.target_entity)
+                {
                     // Check if still in range
-                    let a_size =
-                        if let Ok(a_size) = q_victim.get_component::<UnitSize>(attack_state.target_entity) {
-                            a_size.0
-                        } else {
-                            0f32
-                        };
+                    let a_size = if let Ok(a_size) =
+                        q_victim.get_component::<UnitSize>(attack_state.target_entity)
+                    {
+                        a_size.0
+                    } else {
+                        0f32
+                    };
                     let distance = (a_transform.translation - transform.translation).length();
                     if distance > ability.range + ability.motion_buffer_range + size.0 + a_size {
                         *state = MeleeAbilityState::MotionBufferExceeded;
@@ -310,7 +334,7 @@ pub fn health_system(
             suffer_damage.amount.pop();
         }
         if health.current_hp <= 0f32 {
-            commands.despawn_recursive(entity);
+            commands.entity(entity).despawn_recursive();
         }
     }
 }

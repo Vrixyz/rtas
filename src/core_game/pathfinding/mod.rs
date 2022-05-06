@@ -3,16 +3,19 @@ use bevy::prelude::*;
 pub struct PathfindingPlugin;
 
 impl Plugin for PathfindingPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(system::setup.system());
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(system::setup);
     }
 }
 
 pub mod pathfinding_comp {
     use std::collections::HashMap;
 
-    use mapgen::TileType;
-
+    #[derive(Clone, PartialEq)]
+    pub enum TileType {
+        Free,
+        Wall,
+    }
     pub enum Direction {
         Up = 0,
         Right = 1,
@@ -50,7 +53,7 @@ pub mod pathfinding_comp {
     impl Map {
         pub(super) fn new(width: u32, height: u32) -> Self {
             Map {
-                tiles: Some(vec![TileType::Floor; (width * height) as usize]),
+                tiles: Some(vec![TileType::Free; (width * height) as usize]),
                 width: width as i32,
                 height: height as i32,
             }
@@ -116,7 +119,7 @@ pub mod pathfinding_comp {
                     return Ok((come_from, cost_so_far));
                 }
                 for next in self.neighbors(&current).iter() {
-                    if !matches!(self.get_tile(next), Ok(TileType::Floor)) {
+                    if !matches!(self.get_tile(next), Ok(TileType::Free)) {
                         continue;
                     }
                     let new_cost = cost_so_far.get(&current).unwrap() + 1f32;
@@ -171,7 +174,7 @@ pub mod pathfinding_comp {
                 return Err(());
             }
             match self.tiles.as_ref() {
-                Some(tiles) => Ok(tiles[(at.0 + at.1 * self.width) as usize]),
+                Some(tiles) => Ok(tiles[(at.0 + at.1 * self.width) as usize].clone()),
                 None => Err(()),
             }
         }
@@ -214,12 +217,24 @@ pub mod pathfinding_comp {
 }
 
 mod system {
-    use super::pathfinding_comp::Map;
+    use super::pathfinding_comp::{Map, TileType};
     use super::*;
 
     pub(super) fn setup(mut commands: Commands, map: Res<crate::core_game::map::Map>) {
         let pathfinding_map = Map {
-            tiles: Some(map.map.tiles.clone()),
+            tiles: Some(
+                map.map
+                    .tiles
+                    .iter()
+                    .map(|t| {
+                        if t.is_walkable() {
+                            return TileType::Free;
+                        } else {
+                            return TileType::Wall;
+                        }
+                    })
+                    .collect(),
+            ),
             width: map.map.width as i32,
             height: map.map.height as i32,
         };

@@ -1,7 +1,9 @@
-use bevy::prelude::Entity;
+use bevy::prelude::{Component, Entity};
 
+#[derive(Component)]
 pub struct UnitSize(pub f32);
-#[derive(PartialEq, Eq, Hash)]
+
+#[derive(Component, PartialEq, Eq, Hash)]
 /// Useful for client to know which sprite to use
 pub enum RenderSprite {
     Ogre,
@@ -9,10 +11,12 @@ pub enum RenderSprite {
     Bandit,
 }
 
+#[derive(Component)]
 pub struct OffensiveStats {
     pub power: f32,
 }
 
+#[derive(Component)]
 pub struct MeleeAbility {
     pub range: f32,
     // additional range to account for units movement
@@ -22,6 +26,7 @@ pub struct MeleeAbility {
 }
 
 // TODO: use a mod to encapsulate state and structures, so the naming and and their scope is cleaner.
+#[derive(Component)]
 pub enum MeleeAbilityState {
     Ready,
     WillAttack(MeleeAbilityStateWillAttack),
@@ -41,23 +46,25 @@ impl MeleeAbilityState {
     }
 }
 
+#[derive(Component)]
 pub struct MeleeAbilityStateWillAttack {
     pub start_time: f32,
     pub target_entity: Entity,
 }
+#[derive(Component)]
 pub struct MeleeAbilityStateCooldown {
     pub start_time: f32,
 }
-
+#[derive(Component)]
 pub struct Team {
     pub id: usize,
 }
-
+#[derive(Component)]
 pub struct Health {
     pub max_hp: f32,
     pub current_hp: f32,
 }
-#[derive(Default)]
+#[derive(Component, Default)]
 pub struct SufferDamage {
     pub amount: Vec<f32>,
 }
@@ -68,19 +75,19 @@ impl SufferDamage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct SeekEnemyRange {
     pub range: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub enum AIUnit {
     Passive,
     SeekEnemy,
     Attack(Attack),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct Attack {
     pub target: Entity,
     pub chase_when_target_too_far: bool,
