@@ -171,7 +171,7 @@ pub fn adapt_units_for_client(
                 .insert_bundle(SpriteBundle {
                     texture: render.render_sprite_visuals[render_sprite].image.clone(),
                     sprite: Sprite {
-                        custom_size: Some(Vec2::splat(dbg!(size.0) * 2.0)),
+                        custom_size: Some(Vec2::splat(size.0 * 2.0)),
                         color: render.render_sprite_visuals[render_sprite].color,
                         ..default()
                     },
@@ -195,7 +195,7 @@ pub fn adapt_units_for_client(
 pub fn no_rotation(mut q: Query<(&GlobalTransform, &mut Transform), With<NoRotation>>) {
     for (gt, mut transform) in q.iter_mut() {
         let global_tranform = gt.compute_transform();
-        transform.rotation = transform.rotation * global_tranform.rotation.inverse();
+        transform.rotation = (transform.rotation.inverse() * global_tranform.rotation).inverse();
     }
 }
 
