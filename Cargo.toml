@@ -7,9 +7,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = {version = "0.7"}
-bevy_prototype_lyon = "0.5.0"
-bevy_rapier2d = { version="0.15"}
+bevy = {version = "0.8"}
+bevy_prototype_lyon = "0.6.0"
+bevy_rapier2d = { version="0.16"}
 rand = "0.8.5"
 mapgen = "0.5.2"
 bevy-inspector-egui = "*"

@@ -78,7 +78,7 @@ pub fn selection_ui_visual(
             let min_y = f32::min(selection.begin_pos_ui.y, selection.end_pos_ui.y);
             let max_x = f32::max(selection.begin_pos_ui.x, selection.end_pos_ui.x);
             let max_y = f32::max(selection.begin_pos_ui.y, selection.end_pos_ui.y);
-            visual.position = Rect {
+            visual.position = UiRect {
                 left: Val::Px(min_x),
                 bottom: Val::Px(min_y),
                 ..Default::default()
@@ -100,7 +100,7 @@ pub fn selection_visual_system(
     mut query_visual: Query<(&mut Transform, &Parent, &mut Visibility), With<SelectionVisual>>,
 ) {
     for (_, parent, mut visibility) in query_visual.iter_mut() {
-        if let Ok(selectable) = query_selectables.get_component::<Selectable>(parent.0) {
+        if let Ok(selectable) = query_selectables.get_component::<Selectable>(parent.get()) {
             if selectable.is_selected {
                 visibility.is_visible = true;
             } else {

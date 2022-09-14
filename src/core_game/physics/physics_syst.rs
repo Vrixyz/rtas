@@ -42,7 +42,7 @@ fn rotate_towards(current_rotation: Quat, direction: Vec3, max_rotation: f32) ->
         direction.normalize(),
     )
     .to_axis_angle();
-    if (angle <= 5_f32.to_radians()) {
+    if angle <= 5_f32.to_radians() {
         return None;
     }
     let angle = angle.min(max_rotation.to_radians());
@@ -63,9 +63,6 @@ pub fn mover_update(
     mut q_target: Query<&mut Transform>,
 ) {
     for (e, mut mover, speed, mut velocity, melee_state, rotate_before_move) in query.iter_mut() {
-        dbg!(&melee_state);
-        dbg!(&speed);
-        dbg!(&velocity);
         if let Some(MeleeAbilityState::WillAttack(will_attack)) = melee_state {
             velocity.linvel = Vec2::new(0.0, 0.0);
             if let Some(rotation) = rotate_before_move {
@@ -119,7 +116,6 @@ pub fn mover_update(
             let distance_to_move = speed.speed * time.delta_seconds_f64() as f32;
             offset *= f32::min(distance_to_move, offset_distance);
 
-            dbg!(&offset);
             // If no physics:
             // let new_position: Isometry<f32> = Isometry::new(bevy_rapier2d::na::Vector2::new(new_position.x,new_position.y), Default::default());
             // transform.translation = new_position;

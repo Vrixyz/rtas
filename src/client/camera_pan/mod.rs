@@ -58,17 +58,9 @@ mod systems {
         for ev in scroll_evr.iter() {
             match ev.unit {
                 MouseScrollUnit::Line => {
-                    println!(
-                        "Scroll (line units): vertical: {}, horizontal: {}",
-                        ev.y, ev.x
-                    );
                     zoom(&mut query, &main_camera, ev);
                 }
                 MouseScrollUnit::Pixel => {
-                    println!(
-                        "Scroll (pixel units): vertical: {}, horizontal: {}",
-                        ev.y, ev.x
-                    );
                     zoom(&mut query, &main_camera, ev);
                 }
             }

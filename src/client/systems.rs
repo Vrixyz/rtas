@@ -57,7 +57,7 @@ pub fn create_render_resource(mut commands: Commands, asset_server: Res<AssetSer
 }
 
 pub fn create_camera(mut commands: Commands) {
-    let camera = OrthographicCameraBundle::new_2d();
+    let camera = Camera2dBundle::default();
     let e = commands.spawn().insert_bundle(camera).id();
     commands.insert_resource(MainCamera { camera_e: e });
     commands.insert_resource(MyCursorState {
@@ -69,7 +69,6 @@ pub fn create_camera(mut commands: Commands) {
 pub fn create_ui(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
     let mut selection_rect_visual: Option<Entity> = None;
     commands.insert_resource(Selection::Hover(None));
-    commands.spawn_bundle(UiCameraBundle::default());
     // root node
     commands
         .spawn_bundle(NodeBundle {
@@ -86,8 +85,8 @@ pub fn create_ui(mut commands: Commands, mut materials: ResMut<Assets<ColorMater
                 .spawn_bundle(NodeBundle {
                     style: Style {
                         size: Size::new(Val::Px(100.0), Val::Px(100.0)),
-                        border: Rect::all(Val::Px(2.0)),
-                        position: Rect {
+                        border: UiRect::all(Val::Px(2.0)),
+                        position: UiRect {
                             left: Val::Px(600.0),
                             bottom: Val::Px(180.0),
                             ..Default::default()
@@ -121,7 +120,8 @@ pub fn adapt_map_for_client(
             DrawMode::Fill(FillMode::color(render.color_walls.clone())),
             transform.with_scale(Vec3::new(size.x, size.y, 1.0)),
         ));
-        //.insert(Parent(entity));
+        // FIXME: I should parent the drawing to its collider.
+        // .insert(Parent(entity));
     }
 }
 
@@ -141,58 +141,61 @@ pub fn adapt_units_for_client(
 
     for (entity, team, render_sprite, size) in query.iter() {
         commands
-            .spawn()
-            .insert_bundle(GeometryBuilder::build_as(
-                &circleShape,
-                DrawMode::Stroke(StrokeMode::new(render.team_colors[team.id], 3.0 / 20.0)),
-                Transform::default().with_scale(Vec2::splat(size.0).extend(1.0)),
-            ))
-            .insert(Parent(entity));
-        commands
-            .spawn()
-            .insert_bundle(GeometryBuilder::build_as(
+            .entity(entity)
+            .insert(Selectable {
+                is_selected: false,
+                half_size: size.0,
+            })
+            .insert(Visibility::visible())
+            .insert(ComputedVisibility::default());
+        commands.entity(entity).with_children(|parent| {
+            parent
+                .spawn()
+                .insert_bundle(GeometryBuilder::build_as(
+                    &circleShape,
+                    DrawMode::Stroke(StrokeMode::new(render.team_colors[team.id], 3.0 / 20.0)),
+                    Transform::default().with_scale(Vec2::splat(size.0).extend(1.0)),
+                ))
+                .insert(NoRotation);
+            parent.spawn().insert_bundle(GeometryBuilder::build_as(
                 &triangleShape,
                 DrawMode::Outlined {
                     fill_mode: FillMode::color(Color::NONE),
                     outline_mode: StrokeMode::new(render.team_colors[team.id], 5.0 / 20.0),
                 },
                 Transform::default().with_scale(Vec2::splat(size.0).extend(1.0)),
-            ))
-            .insert(Parent(entity));
+            ));
 
-        commands
-            .spawn()
-            .insert_bundle(SpriteBundle {
-                texture: render.render_sprite_visuals[render_sprite].image.clone(),
-                sprite: Sprite {
-                    custom_size: Some(Vec2::splat(size.0 * 2.0)),
-                    color: render.render_sprite_visuals[render_sprite].color,
+            parent
+                .spawn()
+                .insert_bundle(SpriteBundle {
+                    texture: render.render_sprite_visuals[render_sprite].image.clone(),
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::splat(dbg!(size.0) * 2.0)),
+                        color: render.render_sprite_visuals[render_sprite].color,
+                        ..default()
+                    },
                     ..default()
-                },
-                ..default()
-            })
-            .insert(Parent(entity))
-            .insert(NoRotation);
-        commands.entity(entity).insert(Selectable {
-            is_selected: false,
-            half_size: size.0,
-        });
+                })
+                .insert(NoRotation);
 
-        commands
-            .spawn()
-            .insert_bundle(GeometryBuilder::build_as(
-                &circleShape,
-                DrawMode::Stroke(StrokeMode::new(render.color_selection, 2.0 / 20.0)),
-                Transform::default().with_scale(Vec2::splat(size.0 + 2.0).extend(1.0)),
-            ))
-            .insert(SelectionVisual)
-            .insert(Parent(entity));
+            parent
+                .spawn()
+                .insert_bundle(GeometryBuilder::build_as(
+                    &circleShape,
+                    DrawMode::Stroke(StrokeMode::new(render.color_selection, 2.0 / 20.0)),
+                    Transform::default().with_scale(Vec2::splat(size.0 + 2.0).extend(1.0)),
+                ))
+                .insert(SelectionVisual)
+                .insert(NoRotation);
+        });
     }
 }
 
-pub fn no_rotation(mut q: Query<(&mut GlobalTransform, &NoRotation)>) {
-    for (mut gt, _) in q.iter_mut() {
-        gt.rotation = Default::default();
+pub fn no_rotation(mut q: Query<(&GlobalTransform, &mut Transform), With<NoRotation>>) {
+    for (gt, mut transform) in q.iter_mut() {
+        let global_tranform = gt.compute_transform();
+        transform.rotation = transform.rotation * global_tranform.rotation.inverse();
     }
 }
 
@@ -297,21 +300,29 @@ pub fn health_visual_setup_system(
     for (entity, health, size) in q_health.iter_mut() {
         let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health, size);
 
-        let max_hp_entity = commands
-            .spawn()
-            .insert_bundle(sprites.0)
-            .insert(Parent(entity))
-            .insert(NoRotation)
-            .id();
-        let current_hp_entity = commands
-            .spawn()
-            .insert_bundle(sprites.1)
-            .insert(Parent(entity))
-            .insert(NoRotation)
-            .id();
+        let mut max_hp_entity = None;
+        let mut current_hp_entity = None;
+
+        commands.entity(entity).with_children(|parent| {
+            max_hp_entity = Some(
+                parent
+                    .spawn()
+                    .insert_bundle(sprites.0)
+                    .insert(NoRotation)
+                    .id(),
+            );
+            current_hp_entity = Some(
+                parent
+                    .spawn()
+                    .insert_bundle(sprites.1)
+                    .insert(NoRotation)
+                    .id(),
+            );
+        });
+
         commands.entity(entity).insert(HealthVisual {
-            max_hp_visual: max_hp_entity,
-            current_hp_visual: current_hp_entity,
+            max_hp_visual: max_hp_entity.unwrap(),
+            current_hp_visual: current_hp_entity.unwrap(),
         });
     }
 }
@@ -320,7 +331,7 @@ pub fn health_visual_system(
     mut commands: Commands,
     mut health_visual_resource: Res<HealthVisualResource>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut q_health: Query<(&Health, &HealthVisual, &UnitSize)>,
+    mut q_health: Query<(&Health, &HealthVisual, &UnitSize), Changed<Health>>,
 ) {
     for (health, visual, size) in q_health.iter_mut() {
         let sprites = create_health_visual(&mut health_visual_resource, &mut meshes, health, size);
@@ -410,21 +421,28 @@ pub mod ability {
             let sprites =
                 create_ability_visual(&mut ability_visual_resource, &mut meshes, size, 0f32);
 
-            let max_hp_entity = commands
-                .spawn()
-                .insert_bundle(sprites.0)
-                .insert(Parent(entity))
-                .insert(NoRotation)
-                .id();
-            let current_hp_entity = commands
-                .spawn()
-                .insert_bundle(sprites.1)
-                .insert(Parent(entity))
-                .insert(NoRotation)
-                .id();
+            let mut max_hp_entity = None;
+            let mut current_hp_entity = None;
+            commands.entity(entity).with_children(|parent| {
+                max_hp_entity = Some(
+                    parent
+                        .spawn()
+                        .insert_bundle(sprites.0)
+                        .insert(NoRotation)
+                        .id(),
+                );
+                current_hp_entity = Some(
+                    parent
+                        .spawn()
+                        .insert_bundle(sprites.1)
+                        .insert(NoRotation)
+                        .id(),
+                );
+            });
+
             commands.entity(entity).insert(AbilityVisual {
-                background: max_hp_entity,
-                current: current_hp_entity,
+                background: max_hp_entity.unwrap(),
+                current: current_hp_entity.unwrap(),
             });
         }
     }

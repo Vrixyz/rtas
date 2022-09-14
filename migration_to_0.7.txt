@@ -28,4 +28,8 @@ New errors appearing
 
 Rapier:
 - I had to add Velocity component
-- the physics scale changed
+- the physics scale changed ?
+
+# 0.8
+
+No Rotation not working
