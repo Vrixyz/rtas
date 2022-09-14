@@ -154,7 +154,7 @@ pub fn adapt_units_for_client(
                 .insert_bundle(GeometryBuilder::build_as(
                     &circleShape,
                     DrawMode::Stroke(StrokeMode::new(render.team_colors[team.id], 3.0 / 20.0)),
-                    Transform::default().with_scale(Vec2::splat(size.0).extend(1.0)),
+                    Transform::default().with_scale(Vec2::splat(size.0).extend(1.1)),
                 ))
                 .insert(NoRotation);
             parent.spawn().insert_bundle(GeometryBuilder::build_as(
@@ -192,10 +192,13 @@ pub fn adapt_units_for_client(
     }
 }
 
-pub fn no_rotation(mut q: Query<(&GlobalTransform, &mut Transform), With<NoRotation>>) {
-    for (gt, mut transform) in q.iter_mut() {
-        let global_tranform = gt.compute_transform();
-        transform.rotation = (transform.rotation.inverse() * global_tranform.rotation).inverse();
+pub fn no_rotation(
+    mut q_no_rotation: Query<(Entity, &Parent, &mut Transform), With<NoRotation>>,
+    mut q_parent: Query<&mut Transform, Without<NoRotation>>,
+) {
+    for (e, parent, mut transform) in q_no_rotation.iter_mut() {
+        let parent_transform = q_parent.get(parent.get()).unwrap();
+        transform.rotation = parent_transform.rotation.inverse();
     }
 }
 

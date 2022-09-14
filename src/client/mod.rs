@@ -37,9 +37,9 @@ impl Plugin for ClientPlugin {
         });
 
         app.add_stage_after(
-            CoreStage::PostUpdate,
+            CoreStage::Update,
             CustomStage::PreRender,
-            SystemStage::parallel(),
+            SystemStage::single_threaded(),
         );
 
         app.add_startup_system(create_camera)

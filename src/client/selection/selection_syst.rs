@@ -86,11 +86,15 @@ pub fn selection_ui_visual(
             visual.size = Size::new(Val::Px(max_x - min_x), Val::Px(max_y - min_y));
         }
         if let Ok(mut draw) = q.get_component_mut::<Visibility>(rect.visual) {
-            draw.is_visible = true;
+            if (!draw.is_visible) {
+                draw.is_visible = true;
+            }
         }
     } else {
         if let Ok(mut draw) = q.get_component_mut::<Visibility>(rect.visual) {
-            draw.is_visible = false;
+            if (draw.is_visible) {
+                draw.is_visible = false;
+            }
         }
     }
 }
