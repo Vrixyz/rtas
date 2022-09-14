@@ -5,6 +5,7 @@ use bevy_rapier2d::{
     rapier::{dynamics::IntegrationParameters, math::Vector},
 };
 
+use super::PHYSICS_PIXEL_PER_METER;
 use crate::core_game::{components::*, orders::orders_comp::*};
 
 #[derive(Component)]
@@ -16,7 +17,7 @@ pub fn physics_setup(
 ) {
     configuration.gravity = Default::default();
 
-    context.integration_parameters.erp = 0.2;
+    context.integration_parameters.erp = 0.8;
 }
 
 pub fn physics_init(
@@ -27,6 +28,7 @@ pub fn physics_init(
         commands
             .entity(e)
             .insert(RigidBody::Dynamic)
+            .insert(Velocity::zero())
             .insert(Collider::ball(size.0))
             .insert(LockedAxes::ROTATION_LOCKED)
             .insert(Transform::from_translation(transform.translation))
@@ -35,25 +37,17 @@ pub fn physics_init(
 }
 
 fn rotate_towards(current_rotation: Quat, direction: Vec3, max_rotation: f32) -> Option<Quat> {
-    let current_angle = current_rotation.angle_between(Quat::from_rotation_z(0.0));
-
-    let corrected_angle = current_angle.to_degrees();
-    let angle_target = direction.y.atan2(direction.x).to_degrees();
-    let mut angle_to_rotate = angle_target - corrected_angle;
-    if angle_to_rotate > 180f32 {
-        angle_to_rotate -= 360f32;
-    } else if angle_to_rotate < -180f32 {
-        angle_to_rotate += 360f32;
+    let (axis, angle) = Quat::from_rotation_arc(
+        current_rotation * Vec3::new(1f32, 0f32, 0f32),
+        direction.normalize(),
+    )
+    .to_axis_angle();
+    if (angle <= 5_f32.to_radians()) {
+        return None;
     }
-    let max_rotation_this_frame = max_rotation;
-    let rotation_this_frame =
-        f32::min(max_rotation_this_frame, angle_to_rotate.abs()) * angle_to_rotate.signum();
+    let angle = angle.min(max_rotation.to_radians());
 
-    if angle_to_rotate.abs() <= 5.0 {
-        None
-    } else {
-        Some(Quat::from_rotation_z(rotation_this_frame.to_radians()) * current_rotation)
-    }
+    Some(Quat::from_axis_angle(axis, angle) * current_rotation)
 }
 
 pub fn mover_update(
@@ -69,6 +63,9 @@ pub fn mover_update(
     mut q_target: Query<&mut Transform>,
 ) {
     for (e, mut mover, speed, mut velocity, melee_state, rotate_before_move) in query.iter_mut() {
+        dbg!(&melee_state);
+        dbg!(&speed);
+        dbg!(&velocity);
         if let Some(MeleeAbilityState::WillAttack(will_attack)) = melee_state {
             velocity.linvel = Vec2::new(0.0, 0.0);
             if let Some(rotation) = rotate_before_move {
@@ -122,6 +119,7 @@ pub fn mover_update(
             let distance_to_move = speed.speed * time.delta_seconds_f64() as f32;
             offset *= f32::min(distance_to_move, offset_distance);
 
+            dbg!(&offset);
             // If no physics:
             // let new_position: Isometry<f32> = Isometry::new(bevy_rapier2d::na::Vector2::new(new_position.x,new_position.y), Default::default());
             // transform.translation = new_position;
@@ -136,7 +134,7 @@ pub fn mover_update(
 
         // TO CHECK: old code had to wake up that
 
-        // body.wake_up(true);
+        //body.wake_up(true);
 
         //
     }

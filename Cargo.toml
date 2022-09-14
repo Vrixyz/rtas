@@ -9,14 +9,11 @@ edition = "2021"
 [dependencies]
 bevy = {version = "0.7"}
 bevy_prototype_lyon = "0.5.0"
-bevy_rapier2d = { version="*", git = "https://github.com/dimforge/bevy_rapier.git", branch = "rewrite"}
+bevy_rapier2d = { version="0.15"}
 rand = "0.8.5"
 mapgen = "0.5.2"
+bevy-inspector-egui = "*"
 
-[patch.crates-io]
-rapier2d = { git = 'https://github.com/dimforge/rapier.git'}
-parry2d = { git = 'https://github.com/dimforge/parry.git' }
-nalgebra = { git = 'https://github.com/dimforge/nalgebra.git' }
 
 [profile.dev]
 opt-level = 1

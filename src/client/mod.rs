@@ -27,8 +27,10 @@ pub struct ClientPlugin;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
+        use bevy_inspector_egui::WorldInspectorPlugin;
         app.add_plugin(CameraPanPlugin);
         app.add_plugin(ShapePlugin);
+        app.add_plugin(WorldInspectorPlugin::new());
 
         app.insert_resource(TeamResource {
             team: Team { id: 2 },

@@ -60,7 +60,6 @@ pub struct RenderSpriteVisual {
 pub struct NoRotation;
 
 pub struct MyCursorState {
-    pub mouse_wheel: Vec<MouseWheel>,
     // need to identify the main camera
     pub camera_e: Entity,
     pub world_position: Position,

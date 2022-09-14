@@ -1,17 +1,19 @@
 use crate::core_game::components::*;
+use bevy::prelude::*;
 use bevy::{math::Vec3, prelude::Component};
+use bevy_inspector_egui::Inspectable;
 
 // Hide mover to avoid doing bad things, because only
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Inspectable)]
 pub struct Mover {
     pub(super) target_position: Vec3,
     pub is_target_reached: bool,
 }
-#[derive(Component)]
+#[derive(Component, Inspectable)]
 pub struct RotateBeforeMove {
     pub rotation_speed: f32,
 }
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Inspectable)]
 pub struct Speed {
     pub speed: f32,
 }

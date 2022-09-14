@@ -51,16 +51,37 @@ mod systems {
         mut commands: Commands,
         mut camera_pan: ResMut<CameraPan>,
         main_camera: Res<MainCamera>,
-        mut my_cursor_state: ResMut<MyCursorState>,
+        mut scroll_evr: EventReader<MouseWheel>,
         mut query: Query<&mut Transform>,
     ) {
-        if let Some(ev) = &my_cursor_state.mouse_wheel.last() {
-            // FIXME: Scale is very ugly: zooming out messes up with cursor movement, and we can't zoom in.
-            let mut transform = query
-                .get_component_mut::<Transform>(main_camera.camera_e)
-                .unwrap();
-            let offset = ev.y * -0.01f32;
-            transform.scale = transform.scale + Vec3::ONE * offset;
+        use bevy::input::mouse::MouseScrollUnit;
+        for ev in scroll_evr.iter() {
+            match ev.unit {
+                MouseScrollUnit::Line => {
+                    println!(
+                        "Scroll (line units): vertical: {}, horizontal: {}",
+                        ev.y, ev.x
+                    );
+                    zoom(&mut query, &main_camera, ev);
+                }
+                MouseScrollUnit::Pixel => {
+                    println!(
+                        "Scroll (pixel units): vertical: {}, horizontal: {}",
+                        ev.y, ev.x
+                    );
+                    zoom(&mut query, &main_camera, ev);
+                }
+            }
         }
+    }
+
+    fn zoom(query: &mut Query<&mut Transform>, main_camera: &Res<MainCamera>, ev: &MouseWheel) {
+        let mut transform = query
+            .get_component_mut::<Transform>(main_camera.camera_e)
+            .unwrap();
+        let offset = ev.y * -0.1f32;
+        let newScale = transform.scale + Vec3::ONE * offset;
+        // FIXME: Scale is very ugly: zooming out messes up with cursor drag movement (should take zoom into account), and we can't zoom in.
+        transform.scale = newScale.max(Vec3::ONE);
     }
 }

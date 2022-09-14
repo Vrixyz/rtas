@@ -104,7 +104,6 @@ pub fn selection_visual_system(
             if selectable.is_selected {
                 visibility.is_visible = true;
             } else {
-                // TODO: know how to hide properly something (scale 0 breaks everything (I guess it's removed or break the transform..?))
                 visibility.is_visible = false;
             }
         }

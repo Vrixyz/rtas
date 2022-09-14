@@ -1,4 +1,4 @@
-use super::{components::*, map::Map, orders::orders_comp::*};
+use super::{components::*, map::Map, orders::orders_comp::*, physics::PHYSICS_PIXEL_PER_METER};
 use bevy::prelude::*;
 
 // Bundles
@@ -36,7 +36,7 @@ pub fn create_bandit_unit(team: Team, position: Vec3) -> UnitBundle {
         rotate_before_move: RotateBeforeMove {
             rotation_speed: 700f32,
         },
-        speed: Speed { speed: 80f32 },
+        speed: Speed { speed: 160f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
         seek_enemy_range: SeekEnemyRange { range: 200f32 },
@@ -66,7 +66,7 @@ pub fn create_goblin_unit(team: Team, position: Vec3) -> UnitBundle {
         rotate_before_move: RotateBeforeMove {
             rotation_speed: 720f32,
         },
-        speed: Speed { speed: 120f32 },
+        speed: Speed { speed: 200f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
         seek_enemy_range: SeekEnemyRange { range: 200f32 },
@@ -96,7 +96,7 @@ pub fn create_ogre_unit(team: Team, position: Vec3) -> UnitBundle {
         rotate_before_move: RotateBeforeMove {
             rotation_speed: 90f32,
         },
-        speed: Speed { speed: 30f32 },
+        speed: Speed { speed: 50f32 },
         team,
         ai_unit: AIUnit::SeekEnemy,
         seek_enemy_range: SeekEnemyRange { range: 200f32 },
@@ -140,9 +140,11 @@ pub fn create_units(mut commands: Commands, map: Res<Map>) {
                 0.0,
             );
 
-            commands
+            let id = commands
                 .spawn()
-                .insert_bundle(create_bandit_unit(Team { id: 2 }, position));
+                .insert_bundle(create_bandit_unit(Team { id: 2 }, position))
+                .id();
+            dbg!(id);
         }
     }
     const OFFSET_POSITION_OGRE: f32 = 100f32;

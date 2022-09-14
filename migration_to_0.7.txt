@@ -1,0 +1,31 @@
+- mandatory edition 2021 is hard to understand, hopefully searching for "wgpu bevy error" on internet quickly gets an answer
+- API changes (mostly minor):
+  - Mutated -> Changed
+  - Events -> EventReader
+  - SpriteComponents -> SpriteBundle
+  - NodeComponents -> NodeBundle
+  - materials less used in favor of direct colors
+  - "Without<T>" used differently in Query
+  - Adding derive(Components)
+  - spawn -> spawn_bundle or followed by insert
+  - component addition changes: with() -> insert()
+  - some ecs imports now in prelude
+  - stage namespaces moved a bit (CamelCase-ified)
+  - stage declaration explicit about parallelization
+  - "Visibility" struct used instead of "Draw"
+  - Orthographic and UI camera construction
+- other crates API Changes
+  - bevy lyon from 0.1.3 to 0.5.0
+    - most user code changed but no major refactoring
+  - rapier
+    - Queries changed
+	- body, collider creation changed
+
+New errors appearing
+- glam changes : .x() -> .x ; set_x() -> x = new_val
+- rust analyzer or the error lens a bit lost, having trouble to keep showing me errors directly in files :(
+- EntityCommand API with `commands.entity(entity)` or `.id()`
+
+Rapier:
+- I had to add Velocity component
+- the physics scale changed

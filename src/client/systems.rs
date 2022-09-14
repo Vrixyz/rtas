@@ -61,7 +61,6 @@ pub fn create_camera(mut commands: Commands) {
     let e = commands.spawn().insert_bundle(camera).id();
     commands.insert_resource(MainCamera { camera_e: e });
     commands.insert_resource(MyCursorState {
-        mouse_wheel: Default::default(),
         camera_e: e,
         world_position: Position { x: 0f32, y: 0f32 },
         ui_position: Vec2::default(),
@@ -110,21 +109,19 @@ pub fn adapt_map_for_client(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     render: Res<RenderResource>,
-    query: Query<(Entity, &Wall, &WallSize)>,
+    query: Query<(Entity, &Transform, &Wall, &WallSize)>,
 ) {
     let rectShape = shapes::Rectangle {
-        extents: Vec2::new(1.0, 1.0),
+        extents: Vec2::new(2.0, 2.0),
         ..Default::default()
     };
-    for (entity, _, size) in query.iter() {
-        commands
-            .spawn()
-            .insert_bundle(GeometryBuilder::build_as(
-                &rectShape,
-                DrawMode::Fill(FillMode::color(render.color_walls.clone())),
-                Transform::default().with_scale(Vec3::new(size.x, size.y, 1.0)),
-            ))
-            .insert(Parent(entity));
+    for (entity, transform, _, size) in query.iter() {
+        commands.spawn().insert_bundle(GeometryBuilder::build_as(
+            &rectShape,
+            DrawMode::Fill(FillMode::color(render.color_walls.clone())),
+            transform.with_scale(Vec3::new(size.x, size.y, 1.0)),
+        ));
+        //.insert(Parent(entity));
     }
 }
 

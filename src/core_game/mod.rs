@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::RegisterInspectable;
 use pathfinding::PathfindingPlugin;
 
 pub mod components;
@@ -15,8 +16,12 @@ pub struct CorePlugin;
 
 impl Plugin for CorePlugin {
     fn build(&self, app: &mut App) {
-        app
-        .add_plugin(physics::PhysicsPlugin)
+        use crate::core_game::orders::orders_comp::*;
+        app.register_inspectable::<Speed>();
+        app.register_inspectable::<RotateBeforeMove>();
+        app.register_inspectable::<Mover>();
+
+        app.add_plugin(physics::PhysicsPlugin)
         .add_plugin(PathfindingPlugin)
         .add_startup_system_to_stage(StartupStage::PreStartup, create_map)
         .add_startup_system_to_stage(StartupStage::Startup, create_units)
