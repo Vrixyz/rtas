@@ -123,7 +123,7 @@ pub fn mover_update(
             let mut speed_to_apply = speed.speed;
             let distance_in_a_frame = speed.speed * 1.0 / 60.0;
             if offset_distance < distance_in_a_frame {
-                speed_to_apply = offset.length() * 1.0 / 60.0;
+                //speed_to_apply = offset.length() * 1.0 / 60.0;
             }
             velocity.linvel = Vec2::new(offset.x, offset.y).normalize() * speed_to_apply;
         }

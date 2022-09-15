@@ -61,6 +61,7 @@ pub fn move_order_system(
                 selected_units.push((orders, transform.translation));
             }
         }
+        let mut magic_box_center: Option<Vec3> = None;
         if selected_units.len() > 1 {
             let mut min = Vec3::new(f32::MAX, f32::MAX, 0.0);
             let mut max = Vec3::new(f32::MIN, f32::MIN, 0.0);
@@ -84,81 +85,89 @@ pub fn move_order_system(
                 &Position::from(&min),
                 &Position::from(&max),
             ) {
-                let center: Vec3 = (min + max) / 2.0;
-                for (orders, position) in selected_units.iter_mut() {
-                    let offset = position.clone() - center.clone();
-                    let target = Vec3::new(
-                        cursor_state.world_position.x,
-                        cursor_state.world_position.y,
-                        0f32,
-                    ) + offset;
-                    let mut new_orders = vec![if key_button.pressed(KeyCode::A) {
-                        Order::Ai(AIUnit::SeekEnemy)
-                    } else {
-                        Order::Ai(AIUnit::Passive)
-                    }];
-                    if map.is_ready() {
-                        let start_map = (
-                            crate::core_game::map::Map::map_x_at(position.x) as i32,
-                            crate::core_game::map::Map::map_y_at(position.y) as i32,
-                        );
-                        let target_map = (
-                            crate::core_game::map::Map::map_x_at(target.x) as i32,
-                            crate::core_game::map::Map::map_y_at(target.y) as i32,
-                        );
-                        if let Ok(path) = map.dijkstra(start_map, target_map) {
-                            let mut real_path = path
-                                .into_iter()
-                                .map(|pos| {
-                                    let real_pos = crate::core_game::map::Map::real_position_at(
-                                        pos.0 as usize,
-                                        pos.1 as usize,
-                                    );
-                                    Orders::order_move(Vec3::new(
-                                        // TODO: convert to real
-                                        real_pos.x, real_pos.y, 0f32,
-                                    ))
-                                })
-                                .collect::<Vec<Order>>();
-                            new_orders.append(&mut real_path);
-                        } else {
-                            new_orders.push(Orders::order_move(target))
-                        }
-                    } else {
-                        new_orders.push(Orders::order_move(target))
-                    }
-                    new_orders.push(Order::Ai(AIUnit::SeekEnemy));
-                    if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
-                        orders.add_orders(new_orders);
-                    } else {
-                        orders.replace_orders(new_orders);
-                    }
-                }
-                return;
+                magic_box_center = Some((min + max) / 2.0);
             }
         }
-        // Inside magic box
-        for (orders, _) in selected_units.iter_mut() {
-            let new_orders = vec![
-                if key_button.pressed(KeyCode::A) {
-                    Order::Ai(AIUnit::SeekEnemy)
+        let magic_box_center = magic_box_center;
+        for (orders, position) in selected_units.iter_mut() {
+            let offset = if let Some(center) = magic_box_center {
+                position.clone() - center.clone()
+            } else {
+                Vec3::ZERO
+            };
+            let target = Vec3::new(
+                cursor_state.world_position.x,
+                cursor_state.world_position.y,
+                0f32,
+            ) + offset;
+            let mut new_orders = vec![if key_button.pressed(KeyCode::A) {
+                Order::Ai(AIUnit::SeekEnemy)
+            } else {
+                Order::Ai(AIUnit::Passive)
+            }];
+            if map.is_ready() {
+                let start_map = (
+                    crate::core_game::map::Map::map_x_at(position.x) as i32,
+                    crate::core_game::map::Map::map_y_at(position.y) as i32,
+                );
+                let target_map = (
+                    crate::core_game::map::Map::map_x_at(target.x) as i32,
+                    crate::core_game::map::Map::map_y_at(target.y) as i32,
+                );
+                if let Ok(path) = map.dijkstra(start_map, target_map) {
+                    let mut real_path = path
+                        .into_iter()
+                        .map(|pos| {
+                            let real_pos = crate::core_game::map::Map::real_position_at(
+                                pos.0 as usize,
+                                pos.1 as usize,
+                            );
+                            Orders::order_move(Vec3::new(real_pos.x, real_pos.y, 0f32))
+                        })
+                        .collect::<Vec<Order>>();
+                    new_orders.append(&mut real_path);
+                    new_orders.push(Orders::order_move(target));
+                    // First position is current position
+                    new_orders.remove(0);
+                    // Second position is nearest pathable tile, often not exacly in the correct direction.
+                    new_orders.remove(0);
                 } else {
-                    Order::Ai(AIUnit::Passive)
-                },
-                Orders::order_move(Vec3::new(
-                    cursor_state.world_position.x,
-                    cursor_state.world_position.y,
-                    0f32,
-                )),
-                Order::Ai(AIUnit::SeekEnemy),
-            ];
+                    new_orders.push(Orders::order_move(target));
+                }
+            } else {
+                new_orders.push(Orders::order_move(target));
+            }
+            new_orders.push(Order::Ai(AIUnit::SeekEnemy));
             if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
                 orders.add_orders(new_orders);
             } else {
                 orders.replace_orders(new_orders);
             }
         }
+        return;
     }
+    /*
+    // Inside magic box
+    for (orders, _) in selected_units.iter_mut() {
+        let new_orders = vec![
+            if key_button.pressed(KeyCode::A) {
+                Order::Ai(AIUnit::SeekEnemy)
+            } else {
+                Order::Ai(AIUnit::Passive)
+            },
+            Orders::order_move(Vec3::new(
+                cursor_state.world_position.x,
+                cursor_state.world_position.y,
+                0f32,
+            )),
+            Order::Ai(AIUnit::SeekEnemy),
+        ];
+        if key_button.pressed(KeyCode::RShift) || key_button.pressed(KeyCode::LShift) {
+            orders.add_orders(new_orders);
+        } else {
+            orders.replace_orders(new_orders);
+        }
+    }*/
 }
 
 pub fn order_system_visual_startup(
