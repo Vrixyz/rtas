@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy_prototype_lyon::entity::ShapeBundle;
 use bevy_prototype_lyon::prelude::{DrawMode, FillMode, GeometryBuilder, PathBuilder, StrokeMode};
@@ -118,7 +119,9 @@ pub fn adapt_map_for_client(
         commands.spawn().insert_bundle(GeometryBuilder::build_as(
             &rectShape,
             DrawMode::Fill(FillMode::color(render.color_walls.clone())),
-            transform.with_scale(Vec3::new(size.x, size.y, 1.0)),
+            transform
+                .with_translation(transform.translation + Vec3::new(0.0, 0.0, 0.05))
+                .with_scale(Vec3::new(size.x, size.y, 1.0)),
         ));
         // FIXME: I should parent the drawing to its collider.
         // .insert(Parent(entity));
@@ -154,7 +157,8 @@ pub fn adapt_units_for_client(
                 .insert_bundle(GeometryBuilder::build_as(
                     &circleShape,
                     DrawMode::Stroke(StrokeMode::new(render.team_colors[team.id], 3.0 / 20.0)),
-                    Transform::default().with_scale(Vec2::splat(size.0).extend(1.1)),
+                    Transform::from_translation(Vec2::ZERO.extend(0.1))
+                        .with_scale(Vec2::splat(size.0).extend(1.0)),
                 ))
                 .insert(NoRotation);
             parent.spawn().insert_bundle(GeometryBuilder::build_as(
@@ -163,7 +167,8 @@ pub fn adapt_units_for_client(
                     fill_mode: FillMode::color(Color::NONE),
                     outline_mode: StrokeMode::new(render.team_colors[team.id], 5.0 / 20.0),
                 },
-                Transform::default().with_scale(Vec2::splat(size.0).extend(1.0)),
+                Transform::from_translation(Vec2::ZERO.extend(0.1))
+                    .with_scale(Vec2::splat(size.0).extend(1.0)),
             ));
 
             parent
@@ -184,7 +189,8 @@ pub fn adapt_units_for_client(
                 .insert_bundle(GeometryBuilder::build_as(
                     &circleShape,
                     DrawMode::Stroke(StrokeMode::new(render.color_selection, 2.0 / 20.0)),
-                    Transform::default().with_scale(Vec2::splat(size.0 + 2.0).extend(1.0)),
+                    Transform::from_translation(Vec2::ZERO.extend(1.0))
+                        .with_scale(Vec2::splat(size.0 + 2.0).extend(1.0)),
                 ))
                 .insert(SelectionVisual)
                 .insert(NoRotation);

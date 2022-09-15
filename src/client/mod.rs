@@ -56,9 +56,9 @@ impl Plugin for ClientPlugin {
             .add_startup_system(ability_visual_startup)
             .add_system(health_visual_setup_system)
             .add_system(ability_visual_setup)
-            .add_system_to_stage(CoreStage::PostUpdate, health_visual_system)
-            .add_system_to_stage(CoreStage::PostUpdate, ability_visual)
-            // TODO: make the input system trigger before update, and the ai system trigger after update
+            .add_system(health_visual_system)
+            .add_system(ability_visual)
+            // TODO: make the input system trigger before update, and the ai system trigger after update ?
             .add_system(move_order_system)
             .add_startup_system(order_system_visual_startup)
             .add_system(order_system_visual_init)

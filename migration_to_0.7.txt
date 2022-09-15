@@ -32,4 +32,6 @@ Rapier:
 
 # 0.8
 
-No Rotation not working
+- No Rotation not working, had to go through parent transform to cancel its Rotation
+- I had to add Visibility to my hierarchies, not very obvious why some stuff wasn't rendering.
+- some sprites are flashing, changing z coordinates dosen't seem to do much...
